@@ -2,30 +2,33 @@ package servermock
 
 import (
 	"encoding/json"
-	"fmt"
+	"reflect"
 	"regexp"
 )
 
 type Request struct {
-	URL        string            `json:"url"`
+	Url        string            `json:"url"`
 	Method     string            `json:"method"`
 	Headers    map[string]string `json:"headers"`
-	Body       string
-	responses  []Response
 	urlAsRegex regexp.Regexp
+}
+
+// Equal checks if a request is identical to another
+func (r Request) Equal(r2 Request) bool {
+	return reflect.DeepEqual(r, r2)
 }
 
 func (r Request) String() string {
 	bytes, err := json.Marshal(r)
 	if err != nil {
-		panic(fmt.Sprintf("cannot marshal request"))
+		panic("cannot marshal request")
 	}
 	return string(bytes)
 }
 
 func WithRequestURL(url string) func(*Request) {
 	return func(r *Request) {
-		r.URL = url
+		r.Url = url
 		r.urlAsRegex = *regexp.MustCompile(url)
 	}
 }
@@ -51,7 +54,9 @@ func WithRequestHeader(header string, value string) func(*Request) {
 }
 
 func NewRequest(options ...func(*Request)) Request {
-	r := Request{}
+	r := Request{
+		Headers: make(map[string]string),
+	}
 	for _, o := range options {
 		o(&r)
 	}

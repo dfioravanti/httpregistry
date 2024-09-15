@@ -1,77 +1,116 @@
 package servermock
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"testing"
 )
 
-type Match struct {
-	request       Request
-	response      Response
-	NumberOfCalls int
-}
-
-type whyMissed string
-
-const (
-	pathDoesNotMatch   = whyMissed("The path does not match")
-	methodDoesNotMatch = whyMissed("The method does not match")
-)
-
-type Miss struct {
-	MissedMatch Request
-	Why         whyMissed
-}
-
-type Mock struct {
+// A Registry contains all the Match that were registered and it is designed to allow easy access and manipulation to them
+type Registry struct {
 	matches []Match
 	misses  []Miss
 }
 
-func NewMock() *Mock {
-	mock := Mock{}
-	return &mock
+// NewRegistry creates a new Registry
+func NewRegistry() *Registry {
+	reg := Registry{}
+	return &reg
 }
 
-func (m *Mock) AddRequest(request Request) {
-	m.matches = append(m.matches, Match{
-		request:  request,
-		response: Response200,
-	})
+// AddSimpleRequest is a helper function for the most common case of wanting to return a 200 response when URL is called with a method
+func (reg *Registry) AddSimpleRequest(method string, URL string) {
+	request := NewRequest(
+		WithRequestURL(URL),
+		WithRequestMethod(method),
+	)
+
+	reg.matches = append(reg.matches, NewFixedResponseMatch(request, OkResponse))
 }
 
-func (m *Mock) GetServer() *httptest.Server {
+// AddSimpleRequest is a helper function for the common case of wanting to return a statusCode response when URL is called with a method
+func (m *Registry) AddSimpleRequestWithStatusCode(method string, URL string, statusCode int) {
+	request := NewRequest(
+		WithRequestURL(URL),
+		WithRequestMethod(method),
+	)
+	response := NewResponse(
+		WithResponseStatus(statusCode),
+	)
+
+	m.matches = append(m.matches, NewFixedResponseMatch(request, response))
+}
+
+// AddRequest adds request to the mock server and it returns a 200 response each time that request happens
+func (reg *Registry) AddRequest(request Request) {
+	reg.matches = append(reg.matches, NewFixedResponseMatch(request, OkResponse))
+}
+
+// AddRequest adds request to the mock server and it returns response each time that request happens
+func (reg *Registry) AddRequestWithResponse(request Request, response Response) {
+	reg.matches = append(reg.matches, NewFixedResponseMatch(request, response))
+}
+
+func (reg *Registry) GetMatchesPerRequest(r Request) []*http.Request {
+	for _, match := range reg.matches {
+		if match.Request().Equal(r) {
+			return match.Matches()
+		}
+	}
+
+	return []*http.Request{}
+}
+
+// GetServer returns a httptest.Server designed to match all the requests registered with the Registry
+func (reg *Registry) GetServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pathToMatch := r.URL.String()
 		methodToMatch := r.Method
 
-		for _, possibleMatch := range m.matches {
-			if possibleMatch.request.urlAsRegex.MatchString(pathToMatch) {
+		for _, possibleMatch := range reg.matches {
+			requestToMatch := possibleMatch.Request()
+			if requestToMatch.urlAsRegex.MatchString(pathToMatch) {
+				response, err := possibleMatch.NextResponse(r)
+				if err != nil {
+					if errors.Is(ErrNoNextResponseFound, err) {
+						t.Errorf("run out of responses when calling: %v %v", requestToMatch.Method, requestToMatch.Url)
+					}
+				}
+
 				if methodToMatch == r.Method {
-					for k, v := range possibleMatch.response.headers {
+					for k, v := range response.headers {
 						w.Header().Add(k, v)
 					}
-					w.WriteHeader(possibleMatch.response.status)
-					w.Write(possibleMatch.response.body)
+					w.WriteHeader(response.status)
+					_, err = w.Write(response.body)
+					if err != nil {
+						panic("cannot write body of request")
+					}
+
 					return
 				} else {
 					miss := Miss{
-						MissedMatch: possibleMatch.request,
+						MissedMatch: requestToMatch,
 						Why:         methodDoesNotMatch,
 					}
-					m.misses = append(m.misses, miss)
+					reg.misses = append(reg.misses, miss)
 				}
 			} else {
 				miss := Miss{
-					MissedMatch: possibleMatch.request,
+					MissedMatch: requestToMatch,
 					Why:         pathDoesNotMatch,
 				}
-				m.misses = append(m.misses, miss)
+				reg.misses = append(reg.misses, miss)
 			}
 		}
 
-		// If nothing matches we return 500 because we assume that something should match.
-		// Moreover returning 500 allows to distinguish the case where returning 404 is intentional
-		w.WriteHeader(http.StatusInternalServerError)
+		res, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			t.Errorf("impossible to dump http request with error %v", err)
+		}
+
+		t.Errorf("no registered request matched %v, you can use .Why() to get an explanation of why", res)
 	}))
 }
