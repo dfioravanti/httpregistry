@@ -24,7 +24,7 @@ func (s *TestSuite) TestMockMatchesOnRoute() {
 
 		s.Run(name, func() {
 			registry := servermock.NewRegistry()
-			registry.AddSimpleRequest(http.MethodGet, tc.matchPath)
+			registry.AddSimpleRequest(tc.matchPath, http.MethodGet)
 
 			server := registry.GetServer(s.T())
 			defer server.Close()
@@ -63,7 +63,7 @@ func (s *TestSuite) TestMockMatchesOnMethod() {
 		s.Run(name, func() {
 
 			registry := servermock.NewRegistry()
-			registry.AddSimpleRequest(tc.method, path)
+			registry.AddSimpleRequest(path, tc.method)
 
 			server := registry.GetServer(s.T())
 			defer server.Close()
@@ -92,10 +92,7 @@ func (s *TestSuite) TestAccessTheRequestBodyWorks() {
 	`)
 
 	registry := servermock.NewRegistry()
-	mockRequest := servermock.NewRequest(
-		servermock.WithRequestMethod(http.MethodPost),
-		servermock.WithRequestURL(path),
-	)
+	mockRequest := servermock.NewRequest(path, http.MethodPost)
 	registry.AddRequest(mockRequest)
 
 	server := registry.GetServer(s.T())
@@ -119,6 +116,109 @@ func (s *TestSuite) TestAccessTheRequestBodyWorks() {
 	s.Equal(expectedBody, bodyBytes)
 }
 
+func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
+
+	path := "/users"
+
+	expectedBody := []byte(`
+	{
+		user_id: 10,
+		foo: "bar",
+		logged_in: true
+	}
+	`)
+
+	registry := servermock.NewRegistry()
+	registry.AddSimpleRequest(path, http.MethodPost)
+
+	server := registry.GetServer(s.T())
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewBuffer(expectedBody))
+	s.NoError(err)
+
+	client := http.Client{}
+	res, err := client.Do(req)
+	s.NoError(err)
+
+	s.Equal(http.StatusOK, res.StatusCode)
+
+	matchingRequests := registry.GetMatchesUrl(path)
+	s.Equal(1, len(matchingRequests))
+
+	bodyBytes, err := io.ReadAll(matchingRequests[0].Body)
+	s.NoError(err)
+
+	s.Equal(expectedBody, bodyBytes)
+}
+
+func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
+
+	path := "/users"
+
+	expectedBody := []byte(`
+	{
+		user_id: 10,
+		foo: "bar",
+		logged_in: true
+	}
+	`)
+
+	registry := servermock.NewRegistry()
+	registry.AddSimpleRequest(path, http.MethodPost)
+
+	server := registry.GetServer(s.T())
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewBuffer(expectedBody))
+	s.NoError(err)
+
+	client := http.Client{}
+	res, err := client.Do(req)
+	s.NoError(err)
+
+	s.Equal(http.StatusOK, res.StatusCode)
+
+	matchingRequests := registry.GetMatchesUrlAndMethod(path, http.MethodPost)
+	s.Equal(1, len(matchingRequests))
+
+	bodyBytes, err := io.ReadAll(matchingRequests[0].Body)
+	s.NoError(err)
+
+	s.Equal(expectedBody, bodyBytes)
+}
+
+func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodDoesNotMatchCorrectly() {
+
+	path := "/users"
+
+	expectedBody := []byte(`
+	{
+		user_id: 10,
+		foo: "bar",
+		logged_in: true
+	}
+	`)
+
+	registry := servermock.NewRegistry()
+	registry.AddSimpleRequest(path, http.MethodPost)
+
+	server := registry.GetServer(s.T())
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewBuffer(expectedBody))
+	s.NoError(err)
+
+	client := http.Client{}
+	res, err := client.Do(req)
+	s.NoError(err)
+
+	s.Equal(http.StatusOK, res.StatusCode)
+
+	matchingRequests := registry.GetMatchesUrlAndMethod(path, http.MethodGet)
+	s.Equal(0, len(matchingRequests))
+}
+
 func (s *TestSuite) TestMockResponseWithBody() {
 
 	path := "/users"
@@ -133,14 +233,8 @@ func (s *TestSuite) TestMockResponseWithBody() {
 
 	mock := servermock.NewRegistry()
 	mock.AddRequestWithResponse(
-		servermock.NewRequest(
-			servermock.WithRequestMethod(http.MethodPost),
-			servermock.WithRequestURL(path),
-		),
-		servermock.NewResponse(
-			servermock.WithResponseStatus(http.StatusCreated),
-			servermock.WithResponseJSONBody(expectedBody),
-		),
+		servermock.NewRequest(path, http.MethodPost),
+		servermock.NewResponse(http.StatusCreated, expectedBody),
 	)
 
 	server := mock.GetServer(s.T())

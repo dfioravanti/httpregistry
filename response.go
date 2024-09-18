@@ -13,42 +13,42 @@ type Responses = []Response
 
 // Information responses
 var (
-	ContinueResponse           = NewResponse(WithResponseStatus(100))
-	SwitchingProtocolsResponse = NewResponse(WithResponseStatus(101))
-	ProcessingResponse         = NewResponse(WithResponseStatus(102))
-	EarlyHintsResponse         = NewResponse(WithResponseStatus(103))
+	ContinueResponse           = NewResponse(100, nil)
+	SwitchingProtocolsResponse = NewResponse(101, nil)
+	ProcessingResponse         = NewResponse(102, nil)
+	EarlyHintsResponse         = NewResponse(103, nil)
 )
 
 // Successful responses
 var (
-	OkResponse                          = NewResponse(WithResponseStatus(200))
-	CreatedResponse                     = NewResponse(WithResponseStatus(201))
-	AcceptedResponse                    = NewResponse(WithResponseStatus(202))
-	NonAuthoritativeInformationResponse = NewResponse(WithResponseStatus(203))
-	NoContentResponse                   = NewResponse(WithResponseStatus(204))
-	ResetContentResponse                = NewResponse(WithResponseStatus(205))
-	PartialContentResponse              = NewResponse(WithResponseStatus(206))
+	OkResponse                          = NewResponse(200, nil)
+	CreatedResponse                     = NewResponse(201, nil)
+	AcceptedResponse                    = NewResponse(202, nil)
+	NonAuthoritativeInformationResponse = NewResponse(203, nil)
+	NoContentResponse                   = NewResponse(204, nil)
+	ResetContentResponse                = NewResponse(205, nil)
+	PartialContentResponse              = NewResponse(206, nil)
 )
 
 // Redirection messages
 var (
-	MultipleChoicesResponse = NewResponse(WithResponseStatus(300))
+	MultipleChoicesResponse = NewResponse(300, nil)
 )
 
 // Client error responses
 var (
-	BadRequestsResponse      = NewResponse(WithResponseStatus(400))
-	UnauthorizedResponse     = NewResponse(WithResponseStatus(401))
-	PaymentRequiredResponse  = NewResponse(WithResponseStatus(402))
-	ForbiddenResponse        = NewResponse(WithResponseStatus(403))
-	NotFoundResponse         = NewResponse(WithResponseStatus(404))
-	MethodNotAllowedResponse = NewResponse(WithResponseStatus(405))
-	NotAcceptableResponse    = NewResponse(WithResponseStatus(406))
+	BadRequestsResponse      = NewResponse(400, nil)
+	UnauthorizedResponse     = NewResponse(401, nil)
+	PaymentRequiredResponse  = NewResponse(402, nil)
+	ForbiddenResponse        = NewResponse(403, nil)
+	NotFoundResponse         = NewResponse(404, nil)
+	MethodNotAllowedResponse = NewResponse(405, nil)
+	NotAcceptableResponse    = NewResponse(406, nil)
 )
 
 // Server error responses
 var (
-	InternalServerErrorResponse = NewResponse(WithResponseStatus(500))
+	InternalServerErrorResponse = NewResponse(500, nil)
 )
 
 func WithResponseBody(body []byte) func(*Response) {
@@ -85,8 +85,23 @@ func WithResponseHeader(header string, value string) func(*Response) {
 	}
 }
 
-func NewResponse(options ...func(*Response)) Response {
+func NewJSONResponse(statusCode int, body []byte, options ...func(*Response)) Response {
 	r := Response{
+		status:  statusCode,
+		body:    body,
+		headers: map[string]string{"Content-Type": "application/json"},
+	}
+	for _, o := range options {
+		o(&r)
+	}
+
+	return r
+}
+
+func NewResponse(statusCode int, body []byte, options ...func(*Response)) Response {
+	r := Response{
+		status:  statusCode,
+		body:    body,
 		headers: make(map[string]string),
 	}
 	for _, o := range options {

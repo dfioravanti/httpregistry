@@ -21,24 +21,16 @@ func NewRegistry() *Registry {
 }
 
 // AddSimpleRequest is a helper function for the most common case of wanting to return a 200 response when URL is called with a method
-func (reg *Registry) AddSimpleRequest(method string, URL string) {
-	request := NewRequest(
-		WithRequestURL(URL),
-		WithRequestMethod(method),
-	)
+func (reg *Registry) AddSimpleRequest(URL string, method string) {
+	request := NewRequest(URL, method)
 
 	reg.matches = append(reg.matches, NewFixedResponseMatch(request, OkResponse))
 }
 
 // AddSimpleRequest is a helper function for the common case of wanting to return a statusCode response when URL is called with a method
-func (m *Registry) AddSimpleRequestWithStatusCode(method string, URL string, statusCode int) {
-	request := NewRequest(
-		WithRequestURL(URL),
-		WithRequestMethod(method),
-	)
-	response := NewResponse(
-		WithResponseStatus(statusCode),
-	)
+func (m *Registry) AddSimpleRequestWithStatusCode(URL string, method string, statusCode int) {
+	request := NewRequest(URL, method)
+	response := NewResponse(statusCode, nil)
 
 	m.matches = append(m.matches, NewFixedResponseMatch(request, response))
 }
@@ -56,6 +48,28 @@ func (reg *Registry) AddRequestWithResponse(request Request, response Response) 
 func (reg *Registry) GetMatchesPerRequest(r Request) []*http.Request {
 	for _, match := range reg.matches {
 		if match.Request().Equal(r) {
+			return match.Matches()
+		}
+	}
+
+	return []*http.Request{}
+}
+
+func (reg *Registry) GetMatchesUrl(url string) []*http.Request {
+	for _, match := range reg.matches {
+		r := match.Request()
+		if r.urlAsRegex.MatchString(url) {
+			return match.Matches()
+		}
+	}
+
+	return []*http.Request{}
+}
+
+func (reg *Registry) GetMatchesUrlAndMethod(url string, method string) []*http.Request {
+	for _, match := range reg.matches {
+		r := match.Request()
+		if r.urlAsRegex.MatchString(url) && r.Method == method {
 			return match.Matches()
 		}
 	}
