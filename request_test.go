@@ -8,8 +8,8 @@ import (
 
 func (s *TestSuite) TestEqualityWorks() {
 	r := servermock.NewRequest(
-		servermock.WithRequestURL("/test"),
-		servermock.WithRequestMethod(http.MethodPatch),
+		"test",
+		http.MethodPatch,
 		servermock.WithRequestHeader("foo", "bar"),
 	)
 

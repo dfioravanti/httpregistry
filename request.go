@@ -26,19 +26,6 @@ func (r Request) String() string {
 	return string(bytes)
 }
 
-func WithRequestURL(url string) func(*Request) {
-	return func(r *Request) {
-		r.Url = url
-		r.urlAsRegex = *regexp.MustCompile(url)
-	}
-}
-
-func WithRequestMethod(method string) func(*Request) {
-	return func(r *Request) {
-		r.Method = method
-	}
-}
-
 func WithRequestHeaders(headers map[string]string) func(*Request) {
 	return func(r *Request) {
 		for k, v := range headers {
@@ -53,9 +40,12 @@ func WithRequestHeader(header string, value string) func(*Request) {
 	}
 }
 
-func NewRequest(options ...func(*Request)) Request {
+func NewRequest(url string, method string, options ...func(*Request)) Request {
 	r := Request{
-		Headers: make(map[string]string),
+		Url:        url,
+		urlAsRegex: *regexp.MustCompile(url),
+		Method:     method,
+		Headers:    make(map[string]string),
 	}
 	for _, o := range options {
 		o(&r)

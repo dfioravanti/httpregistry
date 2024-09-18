@@ -7,10 +7,7 @@ import (
 )
 
 func (s *TestSuite) TestFixedResponseMatchHasExpectedResponse() {
-	request := servermock.NewRequest(
-		servermock.WithRequestURL("/"),
-		servermock.WithRequestMethod(http.MethodPost),
-	)
+	request := servermock.NewRequest("/", http.MethodPost)
 	response := servermock.NoContentResponse
 
 	match := servermock.NewFixedResponseMatch(request, response)
@@ -19,10 +16,7 @@ func (s *TestSuite) TestFixedResponseMatchHasExpectedResponse() {
 }
 
 func (s *TestSuite) TestFixedResponseRespondsForever() {
-	request := servermock.NewRequest(
-		servermock.WithRequestURL("/"),
-		servermock.WithRequestMethod(http.MethodPost),
-	)
+	request := servermock.NewRequest("/", http.MethodPost)
 	expectedResponse := servermock.NoContentResponse
 
 	match := servermock.NewFixedResponseMatch(request, expectedResponse)
@@ -40,10 +34,7 @@ func (s *TestSuite) TestFixedResponseRespondsForever() {
 }
 
 func (s *TestSuite) TestMultipleResponsesHasExpectedResponse() {
-	request := servermock.NewRequest(
-		servermock.WithRequestURL("/"),
-		servermock.WithRequestMethod(http.MethodPost),
-	)
+	request := servermock.NewRequest("/", http.MethodPost)
 	responses := servermock.Responses{servermock.NoContentResponse}
 
 	match := servermock.NewMultipleResponsesMatch(request, responses)
@@ -52,10 +43,7 @@ func (s *TestSuite) TestMultipleResponsesHasExpectedResponse() {
 }
 
 func (s *TestSuite) TestMultipleResponsesRespondsTheCorrectNumberOfTimes() {
-	request := servermock.NewRequest(
-		servermock.WithRequestURL("/"),
-		servermock.WithRequestMethod(http.MethodPost),
-	)
+	request := servermock.NewRequest("/", http.MethodPost)
 
 	expectedFirstResponse := servermock.CreatedResponse
 	expectedSecondResponse := servermock.NoContentResponse
