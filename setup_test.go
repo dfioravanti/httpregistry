@@ -1,4 +1,4 @@
-package servermock_test
+package httpregistry_test
 
 import (
 	"testing"

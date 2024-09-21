@@ -1,25 +1,25 @@
-package servermock_test
+package httpregistry_test
 
 import (
 	"net/http"
 
-	"github.com/dfioravanti/servermock"
+	"github.com/dfioravanti/httpregistry"
 )
 
 func (s *TestSuite) TestFixedResponseMatchHasExpectedResponse() {
-	request := servermock.NewRequest("/", http.MethodPost)
-	response := servermock.NoContentResponse
+	request := httpregistry.NewRequest("/", http.MethodPost)
+	response := httpregistry.NoContentResponse
 
-	match := servermock.NewFixedResponseMatch(request, response)
+	match := httpregistry.NewFixedResponseMatch(request, response)
 
 	s.Equal(request, match.Request())
 }
 
 func (s *TestSuite) TestFixedResponseRespondsForever() {
-	request := servermock.NewRequest("/", http.MethodPost)
-	expectedResponse := servermock.NoContentResponse
+	request := httpregistry.NewRequest("/", http.MethodPost)
+	expectedResponse := httpregistry.NoContentResponse
 
-	match := servermock.NewFixedResponseMatch(request, expectedResponse)
+	match := httpregistry.NewFixedResponseMatch(request, expectedResponse)
 	expectedNumberOfCalls := 1000
 
 	for range expectedNumberOfCalls {
@@ -34,22 +34,22 @@ func (s *TestSuite) TestFixedResponseRespondsForever() {
 }
 
 func (s *TestSuite) TestMultipleResponsesHasExpectedResponse() {
-	request := servermock.NewRequest("/", http.MethodPost)
-	responses := servermock.Responses{servermock.NoContentResponse}
+	request := httpregistry.NewRequest("/", http.MethodPost)
+	responses := httpregistry.Responses{httpregistry.NoContentResponse}
 
-	match := servermock.NewMultipleResponsesMatch(request, responses)
+	match := httpregistry.NewMultipleResponsesMatch(request, responses)
 
 	s.Equal(request, match.Request())
 }
 
 func (s *TestSuite) TestMultipleResponsesRespondsTheCorrectNumberOfTimes() {
-	request := servermock.NewRequest("/", http.MethodPost)
+	request := httpregistry.NewRequest("/", http.MethodPost)
 
-	expectedFirstResponse := servermock.CreatedResponse
-	expectedSecondResponse := servermock.NoContentResponse
-	responses := servermock.Responses{expectedFirstResponse, expectedSecondResponse}
+	expectedFirstResponse := httpregistry.CreatedResponse
+	expectedSecondResponse := httpregistry.NoContentResponse
+	responses := httpregistry.Responses{expectedFirstResponse, expectedSecondResponse}
 
-	match := servermock.NewMultipleResponsesMatch(request, responses)
+	match := httpregistry.NewMultipleResponsesMatch(request, responses)
 
 	firstResponse, err := match.NextResponse(&http.Request{})
 	s.NoError(err)
@@ -60,5 +60,5 @@ func (s *TestSuite) TestMultipleResponsesRespondsTheCorrectNumberOfTimes() {
 	s.Equal(expectedSecondResponse, secondResponse)
 
 	_, err = match.NextResponse(&http.Request{})
-	s.ErrorIs(err, servermock.ErrNoNextResponseFound)
+	s.ErrorIs(err, httpregistry.ErrNoNextResponseFound)
 }

@@ -1,4 +1,4 @@
-package servermock
+package httpregistry
 
 import "fmt"
 

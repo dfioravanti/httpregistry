@@ -1,4 +1,4 @@
-package servermock
+package httpregistry
 
 type Response struct {
 	body    []byte
