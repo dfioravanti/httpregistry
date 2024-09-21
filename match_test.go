@@ -1,25 +1,23 @@
-package httpregistry_test
+package httpregistry
 
 import (
 	"net/http"
-
-	"github.com/dfioravanti/httpregistry"
 )
 
 func (s *TestSuite) TestFixedResponseMatchHasExpectedResponse() {
-	request := httpregistry.NewRequest("/", http.MethodPost)
-	response := httpregistry.NoContentResponse
+	request := NewRequest("/", http.MethodPost)
+	response := NoContentResponse
 
-	match := httpregistry.NewFixedResponseMatch(request, response)
+	match := newFixedResponseMatch(request, response)
 
 	s.Equal(request, match.Request())
 }
 
 func (s *TestSuite) TestFixedResponseRespondsForever() {
-	request := httpregistry.NewRequest("/", http.MethodPost)
-	expectedResponse := httpregistry.NoContentResponse
+	request := NewRequest("/", http.MethodPost)
+	expectedResponse := NoContentResponse
 
-	match := httpregistry.NewFixedResponseMatch(request, expectedResponse)
+	match := newFixedResponseMatch(request, expectedResponse)
 	expectedNumberOfCalls := 1000
 
 	for range expectedNumberOfCalls {
@@ -34,22 +32,22 @@ func (s *TestSuite) TestFixedResponseRespondsForever() {
 }
 
 func (s *TestSuite) TestMultipleResponsesHasExpectedResponse() {
-	request := httpregistry.NewRequest("/", http.MethodPost)
-	responses := httpregistry.Responses{httpregistry.NoContentResponse}
+	request := NewRequest("/", http.MethodPost)
+	responses := Responses{NoContentResponse}
 
-	match := httpregistry.NewMultipleResponsesMatch(request, responses)
+	match := newMultipleResponsesMatch(request, responses)
 
 	s.Equal(request, match.Request())
 }
 
 func (s *TestSuite) TestMultipleResponsesRespondsTheCorrectNumberOfTimes() {
-	request := httpregistry.NewRequest("/", http.MethodPost)
+	request := NewRequest("/", http.MethodPost)
 
-	expectedFirstResponse := httpregistry.CreatedResponse
-	expectedSecondResponse := httpregistry.NoContentResponse
-	responses := httpregistry.Responses{expectedFirstResponse, expectedSecondResponse}
+	expectedFirstResponse := CreatedResponse
+	expectedSecondResponse := NoContentResponse
+	responses := Responses{expectedFirstResponse, expectedSecondResponse}
 
-	match := httpregistry.NewMultipleResponsesMatch(request, responses)
+	match := newMultipleResponsesMatch(request, responses)
 
 	firstResponse, err := match.NextResponse(&http.Request{})
 	s.NoError(err)
@@ -60,5 +58,5 @@ func (s *TestSuite) TestMultipleResponsesRespondsTheCorrectNumberOfTimes() {
 	s.Equal(expectedSecondResponse, secondResponse)
 
 	_, err = match.NextResponse(&http.Request{})
-	s.ErrorIs(err, httpregistry.ErrNoNextResponseFound)
+	s.ErrorIs(err, errNoNextResponseFound)
 }
