@@ -7,13 +7,14 @@ type whyMissed string
 const (
 	pathDoesNotMatch   = whyMissed("The path does not match")
 	methodDoesNotMatch = whyMissed("The method does not match")
+	headersDoNotMatch  = whyMissed("The headers do not match")
 )
 
-type Miss struct {
+type miss struct {
 	MissedMatch Request
 	Why         whyMissed
 }
 
-func (m Miss) String() string {
+func (m miss) String() string {
 	return fmt.Sprintf("%v missed %v", m.MissedMatch, m.Why)
 }

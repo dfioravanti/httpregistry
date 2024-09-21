@@ -6,12 +6,12 @@ import (
 )
 
 var (
-	ErrNoNextResponseFound = errors.New("it was not possible to found a next response")
+	errNoNextResponseFound = errors.New("it was not possible to found a next response")
 )
 
-// A Match is used to connect a Request to one or multiple possible Response(s) so that when the request happens the mock server
+// A match is used to connect a Request to one or multiple possible Response(s) so that when the request happens the mock server
 // returns the desired response.
-type Match interface {
+type match interface {
 	// Request returns the request that triggers the match
 	Request() Request
 	// Next response returns the next response associated with the match and records which request triggered the match.
@@ -23,17 +23,17 @@ type Match interface {
 	Matches() []*http.Request
 }
 
-// A FixedResponseMatch is a match that returns a fixed Response each time a predefined Request happens
-type FixedResponseMatch struct {
+// A fixedResponseMatch is a match that returns a fixed Response each time a predefined Request happens
+type fixedResponseMatch struct {
 	request       Request
 	response      Response
 	numberOfCalls int
 	matches       []*http.Request
 }
 
-// NewFixedResponseMatch creates a new FixedResponseMatch
-func NewFixedResponseMatch(request Request, response Response) *FixedResponseMatch {
-	return &FixedResponseMatch{
+// newFixedResponseMatch creates a new FixedResponseMatch
+func newFixedResponseMatch(request Request, response Response) *fixedResponseMatch {
+	return &fixedResponseMatch{
 		request:       request,
 		response:      response,
 		numberOfCalls: 0,
@@ -42,32 +42,32 @@ func NewFixedResponseMatch(request Request, response Response) *FixedResponseMat
 }
 
 // Request returns the request that triggers the match
-func (m *FixedResponseMatch) Request() Request {
+func (m *fixedResponseMatch) Request() Request {
 	return m.request
 }
 
 // Next response returns the next response associated with the match and records which request triggered the match.
 // It never raises an error
-func (m *FixedResponseMatch) NextResponse(req *http.Request) (Response, error) {
+func (m *fixedResponseMatch) NextResponse(req *http.Request) (Response, error) {
 	m.matches = append(m.matches, cloneHttpRequest(req))
 
 	return m.response, nil
 }
 
 // Matches returns the list of http.Request that matched with this Match
-func (m *FixedResponseMatch) Matches() []*http.Request {
+func (m *fixedResponseMatch) Matches() []*http.Request {
 	return m.matches
 }
 
 // NumberOfCalls returns the number of times the match was fulfilled
-func (m *FixedResponseMatch) NumberOfCalls() int {
+func (m *fixedResponseMatch) NumberOfCalls() int {
 	return len(m.matches)
 }
 
 // A FixedResponseMatch is a match that returns a different Response each time a predefined Request happens
 //
 // Important: the list of responses gets consumed by the server. Do not reuse this structure, create a new one
-type MultipleResponsesMatch struct {
+type multipleResponsesMatch struct {
 	request       Request
 	responses     Responses
 	numberOfCalls int
@@ -75,8 +75,8 @@ type MultipleResponsesMatch struct {
 }
 
 // NewFixedResponseMatch creates a new FixedResponseMatch
-func NewMultipleResponsesMatch(request Request, responses Responses) *MultipleResponsesMatch {
-	return &MultipleResponsesMatch{
+func newMultipleResponsesMatch(request Request, responses Responses) *multipleResponsesMatch {
+	return &multipleResponsesMatch{
 		request:       request,
 		responses:     responses,
 		numberOfCalls: 0,
@@ -85,16 +85,16 @@ func NewMultipleResponsesMatch(request Request, responses Responses) *MultipleRe
 }
 
 // Request returns the request that triggers the match
-func (m *MultipleResponsesMatch) Request() Request {
+func (m *multipleResponsesMatch) Request() Request {
 	return m.request
 }
 
 // Next response returns the next response associated with the match.
 // If the list of responses is exhausted it will return a ErrNoNextResponseFound error
 // It consumes the list associated with the MultipleResponsesMatch
-func (m *MultipleResponsesMatch) NextResponse(req *http.Request) (Response, error) {
+func (m *multipleResponsesMatch) NextResponse(req *http.Request) (Response, error) {
 	if len(m.responses) == 0 {
-		return Response{}, ErrNoNextResponseFound
+		return Response{}, errNoNextResponseFound
 	}
 
 	m.matches = append(m.matches, cloneHttpRequest(req))
@@ -106,11 +106,11 @@ func (m *MultipleResponsesMatch) NextResponse(req *http.Request) (Response, erro
 }
 
 // Matches returns the list of http.Request that matched with this Match
-func (m *MultipleResponsesMatch) Matches() []*http.Request {
+func (m *multipleResponsesMatch) Matches() []*http.Request {
 	return m.matches
 }
 
 // NumberOfCalls returns the number of times the match was fulfilled
-func (m *MultipleResponsesMatch) NumberOfCalls() int {
+func (m *multipleResponsesMatch) NumberOfCalls() int {
 	return len(m.matches)
 }

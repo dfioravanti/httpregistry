@@ -10,8 +10,8 @@ import (
 
 // A Registry contains all the Match that were registered and it is designed to allow easy access and manipulation to them
 type Registry struct {
-	matches []Match
-	misses  []Miss
+	matches []match
+	misses  []miss
 }
 
 // NewRegistry creates a new Registry
@@ -24,25 +24,29 @@ func NewRegistry() *Registry {
 func (reg *Registry) AddSimpleRequest(URL string, method string) {
 	request := NewRequest(URL, method)
 
-	reg.matches = append(reg.matches, NewFixedResponseMatch(request, OkResponse))
+	reg.matches = append(reg.matches, newFixedResponseMatch(request, OkResponse))
 }
 
 // AddSimpleRequest is a helper function for the common case of wanting to return a statusCode response when URL is called with a method
-func (m *Registry) AddSimpleRequestWithStatusCode(URL string, method string, statusCode int) {
+func (reg *Registry) AddSimpleRequestWithStatusCode(URL string, method string, statusCode int) {
 	request := NewRequest(URL, method)
 	response := NewResponse(statusCode, nil)
 
-	m.matches = append(m.matches, NewFixedResponseMatch(request, response))
+	reg.matches = append(reg.matches, newFixedResponseMatch(request, response))
 }
 
 // AddRequest adds request to the mock server and it returns a 200 response each time that request happens
 func (reg *Registry) AddRequest(request Request) {
-	reg.matches = append(reg.matches, NewFixedResponseMatch(request, OkResponse))
+	reg.matches = append(reg.matches, newFixedResponseMatch(request, OkResponse))
 }
 
 // AddRequest adds request to the mock server and it returns response each time that request happens
 func (reg *Registry) AddRequestWithResponse(request Request, response Response) {
-	reg.matches = append(reg.matches, NewFixedResponseMatch(request, response))
+	reg.matches = append(reg.matches, newFixedResponseMatch(request, response))
+}
+
+func (reg *Registry) AddRequestWithResponses(request Request, responses ...Response) {
+	reg.matches = append(reg.matches, newMultipleResponsesMatch(request, responses))
 }
 
 func (reg *Registry) GetMatchesPerRequest(r Request) []*http.Request {
@@ -80,44 +84,68 @@ func (reg *Registry) GetMatchesUrlAndMethod(url string, method string) []*http.R
 // GetServer returns a httptest.Server designed to match all the requests registered with the Registry
 func (reg *Registry) GetServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pathToMatch := r.URL.String()
-		methodToMatch := r.Method
-
+		// We reset the misses since if a previous request matched it is pointless to record that some of the mocks did not match it.
+		// If said request did not match then the test would have crashed in any case so the information in misses is useless.
+		reg.misses = []miss{}
 		for _, possibleMatch := range reg.matches {
 			requestToMatch := possibleMatch.Request()
-			if requestToMatch.urlAsRegex.MatchString(pathToMatch) {
-				response, err := possibleMatch.NextResponse(r)
-				if err != nil {
-					if errors.Is(ErrNoNextResponseFound, err) {
-						t.Errorf("run out of responses when calling: %v %v", requestToMatch.Method, requestToMatch.Url)
-					}
-				}
 
-				if methodToMatch == r.Method {
-					for k, v := range response.headers {
-						w.Header().Add(k, v)
-					}
-					w.WriteHeader(response.status)
-					_, err = w.Write(response.body)
-					if err != nil {
-						panic("cannot write body of request")
-					}
-
-					return
-				} else {
-					miss := Miss{
-						MissedMatch: requestToMatch,
-						Why:         methodDoesNotMatch,
-					}
-					reg.misses = append(reg.misses, miss)
-				}
-			} else {
-				miss := Miss{
+			if !requestToMatch.urlAsRegex.MatchString(r.URL.String()) {
+				miss := miss{
 					MissedMatch: requestToMatch,
 					Why:         pathDoesNotMatch,
 				}
 				reg.misses = append(reg.misses, miss)
+
+				continue
 			}
+
+			if requestToMatch.Method != r.Method {
+				miss := miss{
+					MissedMatch: requestToMatch,
+					Why:         methodDoesNotMatch,
+				}
+				reg.misses = append(reg.misses, miss)
+
+				continue
+			}
+
+			headersToMatch := requestToMatch.Headers
+			headersMatch := true
+			for headerToMatch, valueToMatch := range headersToMatch {
+				value := r.Header.Get(headerToMatch)
+				if value == "" || value != valueToMatch {
+					headersMatch = false
+					miss := miss{
+						MissedMatch: requestToMatch,
+						Why:         headersDoNotMatch,
+					}
+					reg.misses = append(reg.misses, miss)
+
+					break
+				}
+			}
+
+			if !headersMatch {
+				continue
+			}
+
+			response, err := possibleMatch.NextResponse(r)
+			if err != nil {
+				if errors.Is(errNoNextResponseFound, err) {
+					t.Errorf("run out of responses when calling: %v %v", requestToMatch.Method, requestToMatch.Url)
+				}
+			}
+
+			for k, v := range response.headers {
+				w.Header().Add(k, v)
+			}
+			w.WriteHeader(response.status)
+			_, err = w.Write(response.body)
+			if err != nil {
+				panic("cannot write body of request")
+			}
+			return
 		}
 
 		res, err := httputil.DumpRequest(r, true)
@@ -125,6 +153,17 @@ func (reg *Registry) GetServer(t *testing.T) *httptest.Server {
 			t.Errorf("impossible to dump http request with error %v", err)
 		}
 
-		t.Errorf("no registered request matched %v, you can use .Why() to get an explanation of why", res)
+		t.Errorf("no registered request matched %v\n you can use .Why() to get an explanation of why", string(res))
 	}))
+}
+
+// Why returns a string that contains all the reasons why the request submitted to the registry failed to match with the registered requests.
+// The envision use of this function is just as a helper when debugging the tests,
+// most of the time it might not be obvious if there is a typo or a small error.
+func (reg *Registry) Why() string {
+	output := ""
+	for _, miss := range reg.misses {
+		output += miss.String() + "\n"
+	}
+	return output
 }
