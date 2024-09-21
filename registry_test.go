@@ -1,4 +1,4 @@
-package servermock_test
+package httpregistry_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/dfioravanti/servermock"
+	"github.com/dfioravanti/httpregistry"
 )
 
 func (s *TestSuite) TestMockMatchesOnRoute() {
@@ -23,7 +23,7 @@ func (s *TestSuite) TestMockMatchesOnRoute() {
 		client := http.Client{}
 
 		s.Run(name, func() {
-			registry := servermock.NewRegistry()
+			registry := httpregistry.NewRegistry()
 			registry.AddSimpleRequest(tc.matchPath, http.MethodGet)
 
 			server := registry.GetServer(s.T())
@@ -62,7 +62,7 @@ func (s *TestSuite) TestMockMatchesOnMethod() {
 
 		s.Run(name, func() {
 
-			registry := servermock.NewRegistry()
+			registry := httpregistry.NewRegistry()
 			registry.AddSimpleRequest(path, tc.method)
 
 			server := registry.GetServer(s.T())
@@ -91,8 +91,8 @@ func (s *TestSuite) TestAccessTheRequestBodyWorks() {
 	}
 	`)
 
-	registry := servermock.NewRegistry()
-	mockRequest := servermock.NewRequest(path, http.MethodPost)
+	registry := httpregistry.NewRegistry()
+	mockRequest := httpregistry.NewRequest(path, http.MethodPost)
 	registry.AddRequest(mockRequest)
 
 	server := registry.GetServer(s.T())
@@ -128,7 +128,7 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
 	}
 	`)
 
-	registry := servermock.NewRegistry()
+	registry := httpregistry.NewRegistry()
 	registry.AddSimpleRequest(path, http.MethodPost)
 
 	server := registry.GetServer(s.T())
@@ -164,7 +164,7 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
 	}
 	`)
 
-	registry := servermock.NewRegistry()
+	registry := httpregistry.NewRegistry()
 	registry.AddSimpleRequest(path, http.MethodPost)
 
 	server := registry.GetServer(s.T())
@@ -200,7 +200,7 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodDoesNotMatchCorrectly(
 	}
 	`)
 
-	registry := servermock.NewRegistry()
+	registry := httpregistry.NewRegistry()
 	registry.AddSimpleRequest(path, http.MethodPost)
 
 	server := registry.GetServer(s.T())
@@ -231,10 +231,10 @@ func (s *TestSuite) TestMockResponseWithBody() {
 	}
 	`)
 
-	mock := servermock.NewRegistry()
+	mock := httpregistry.NewRegistry()
 	mock.AddRequestWithResponse(
-		servermock.NewRequest(path, http.MethodPost),
-		servermock.NewResponse(http.StatusCreated, expectedBody),
+		httpregistry.NewRequest(path, http.MethodPost),
+		httpregistry.NewResponse(http.StatusCreated, expectedBody),
 	)
 
 	server := mock.GetServer(s.T())

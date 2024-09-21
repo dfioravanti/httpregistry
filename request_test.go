@@ -1,16 +1,16 @@
-package servermock_test
+package httpregistry_test
 
 import (
 	"net/http"
 
-	"github.com/dfioravanti/servermock"
+	"github.com/dfioravanti/httpregistry"
 )
 
 func (s *TestSuite) TestEqualityWorks() {
-	r := servermock.NewRequest(
+	r := httpregistry.NewRequest(
 		"test",
 		http.MethodPatch,
-		servermock.WithRequestHeader("foo", "bar"),
+		httpregistry.WithRequestHeader("foo", "bar"),
 	)
 
 	s.True(r.Equal(r))

@@ -1,4 +1,4 @@
-module github.com/dfioravanti/servermock
+module github.com/dfioravanti/httpregistry
 
 go 1.22.7
 
