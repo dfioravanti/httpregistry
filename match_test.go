@@ -5,7 +5,7 @@ import (
 )
 
 func (s *TestSuite) TestFixedResponseMatchHasExpectedResponse() {
-	request := NewRequest("/", http.MethodPost)
+	request := NewRequest(http.MethodPost, "/")
 	response := NoContentResponse
 
 	match := newFixedResponseMatch(request, response)
@@ -14,7 +14,7 @@ func (s *TestSuite) TestFixedResponseMatchHasExpectedResponse() {
 }
 
 func (s *TestSuite) TestFixedResponseRespondsForever() {
-	request := NewRequest("/", http.MethodPost)
+	request := NewRequest(http.MethodPost, "/")
 	expectedResponse := NoContentResponse
 
 	match := newFixedResponseMatch(request, expectedResponse)
@@ -32,7 +32,7 @@ func (s *TestSuite) TestFixedResponseRespondsForever() {
 }
 
 func (s *TestSuite) TestMultipleResponsesHasExpectedResponse() {
-	request := NewRequest("/", http.MethodPost)
+	request := NewRequest(http.MethodPost, "/")
 	responses := Responses{NoContentResponse}
 
 	match := newMultipleResponsesMatch(request, responses)
@@ -41,7 +41,7 @@ func (s *TestSuite) TestMultipleResponsesHasExpectedResponse() {
 }
 
 func (s *TestSuite) TestMultipleResponsesRespondsTheCorrectNumberOfTimes() {
-	request := NewRequest("/", http.MethodPost)
+	request := NewRequest(http.MethodPost, "/")
 
 	expectedFirstResponse := CreatedResponse
 	expectedSecondResponse := NoContentResponse

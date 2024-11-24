@@ -1,12 +1,24 @@
 package httpregistry
 
+// Response represents a response that we want to return if the registry finds a request that matches the incoming request.
+// If the match happens then we will return a http response that matches the attributes defined in this struct.
 type Response struct {
 	body    []byte
 	status  int
 	headers map[string]string
 }
 
+// Responses represents a slices of responses
 type Responses = []Response
+
+// ResponseOption represents a option that can be passed to NewResponse when creating a new response.
+// NewResponse uses the Option patters to make it easy to configure the response behavior.
+// For example
+//
+//	NewResponse(100, nil, WithResponseHeader("Content-Type", "application/json"))
+//
+// will return a response with the desired content type
+type ResponseOption func(*Response)
 
 // The list of all status codes is available at
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
@@ -84,27 +96,18 @@ var (
 	NetworkAuthenticationResponse   = NewResponse(511, nil)
 )
 
-func WithResponseBody(body []byte) func(*Response) {
+// WithResponseHeader allows to add any header to a response.
+// If multiple headers with the same name are defined only the last one is applied.
+// To define multiple headers it is recommended to use WithResponseHeaders but it is possible to chain multiple calls of WithResponseHeader.
+func WithResponseHeader(header string, value string) func(*Response) {
 	return func(r *Response) {
-		r.body = body
+		r.headers[header] = value
 	}
 }
 
-func WithResponseJSONBody(body []byte) func(*Response) {
-	return func(r *Response) {
-		r.headers["Content-Type"] = "application/json"
-
-		r.body = body
-	}
-}
-
-func WithResponseStatus(status int) func(*Response) {
-	return func(r *Response) {
-		r.status = status
-	}
-}
-
-func WithResponseHeaders(headers map[string]string) func(*Response) {
+// WithResponseHeaders allows to add any number of headers to a response.
+// If multiple headers with the same name are defined only the last one is applied.
+func WithResponseHeaders(headers map[string]string) ResponseOption {
 	return func(r *Response) {
 		for k, v := range headers {
 			r.headers[k] = v
@@ -112,25 +115,23 @@ func WithResponseHeaders(headers map[string]string) func(*Response) {
 	}
 }
 
-func WithResponseHeader(header string, value string) func(*Response) {
-	return func(r *Response) {
-		r.headers[header] = value
-	}
-}
-
-func NewJSONResponse(statusCode int, body []byte, options ...func(*Response)) Response {
+// NewJSONResponse creates a new Response with the desired statusCode, body and the various options applied,
+// whose "Content-Type" header is set to "application/json".
+// The JSON content type will overwrite any "Content-Type" header that is set via options.
+func NewJSONResponse(statusCode int, body []byte, options ...ResponseOption) Response {
 	r := Response{
 		status:  statusCode,
 		body:    body,
-		headers: map[string]string{"Content-Type": "application/json"},
+		headers: make(map[string]string),
 	}
 	for _, o := range options {
 		o(&r)
 	}
-
+	r.headers["Content-Type"] = "application/json"
 	return r
 }
 
+// NewResponse creates a new Response with the desired statusCode, body and the various options applied.
 func NewResponse(statusCode int, body []byte, options ...func(*Response)) Response {
 	r := Response{
 		status:  statusCode,
