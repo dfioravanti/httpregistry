@@ -1,11 +1,21 @@
 package httpregistry
 
+import "encoding/json"
+
 // Response represents a response that we want to return if the registry finds a request that matches the incoming request.
 // If the match happens then we will return a http response that matches the attributes defined in this struct.
 type Response struct {
-	body    []byte
-	status  int
-	headers map[string]string
+	Status  int               `json:"status"`
+	Body    []byte            `json:"body,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+func (r Response) String() string {
+	bytes, err := json.Marshal(r)
+	if err != nil {
+		panic("cannot marshal request")
+	}
+	return string(bytes)
 }
 
 // Responses represents a slices of responses
@@ -101,7 +111,7 @@ var (
 // To define multiple headers it is recommended to use WithResponseHeaders but it is possible to chain multiple calls of WithResponseHeader.
 func WithResponseHeader(header string, value string) func(*Response) {
 	return func(r *Response) {
-		r.headers[header] = value
+		r.Headers[header] = value
 	}
 }
 
@@ -110,7 +120,7 @@ func WithResponseHeader(header string, value string) func(*Response) {
 func WithResponseHeaders(headers map[string]string) ResponseOption {
 	return func(r *Response) {
 		for k, v := range headers {
-			r.headers[k] = v
+			r.Headers[k] = v
 		}
 	}
 }
@@ -120,23 +130,23 @@ func WithResponseHeaders(headers map[string]string) ResponseOption {
 // The JSON content type will overwrite any "Content-Type" header that is set via options.
 func NewJSONResponse(statusCode int, body []byte, options ...ResponseOption) Response {
 	r := Response{
-		status:  statusCode,
-		body:    body,
-		headers: make(map[string]string),
+		Status:  statusCode,
+		Body:    body,
+		Headers: make(map[string]string),
 	}
 	for _, o := range options {
 		o(&r)
 	}
-	r.headers["Content-Type"] = "application/json"
+	r.Headers["Content-Type"] = "application/json"
 	return r
 }
 
 // NewResponse creates a new Response with the desired statusCode, body and the various options applied.
 func NewResponse(statusCode int, body []byte, options ...func(*Response)) Response {
 	r := Response{
-		status:  statusCode,
-		body:    body,
-		headers: make(map[string]string),
+		Status:  statusCode,
+		Body:    body,
+		Headers: make(map[string]string),
 	}
 	for _, o := range options {
 		o(&r)

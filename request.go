@@ -11,8 +11,22 @@ import (
 type Request struct {
 	URL        string            `json:"url"`
 	Method     string            `json:"method"`
-	Headers    map[string]string `json:"headers"`
+	Headers    map[string]string `json:"headers,omitempty"`
 	urlAsRegex regexp.Regexp
+}
+
+// Equal checks if a request is identical to another
+func (r Request) Equal(r2 Request) bool {
+	return reflect.DeepEqual(r, r2)
+}
+
+// String returns a human readable representation
+func (r Request) String() string {
+	bytes, err := json.Marshal(r)
+	if err != nil {
+		panic("cannot marshal request")
+	}
+	return string(bytes)
 }
 
 // RequestOption represents a option that can be passed to NewRequest when creating a new request.
@@ -23,19 +37,6 @@ type Request struct {
 //
 // will return a request with the desired content type
 type RequestOption func(*Request)
-
-// Equal checks if a request is identical to another
-func (r Request) Equal(r2 Request) bool {
-	return reflect.DeepEqual(r, r2)
-}
-
-func (r Request) String() string {
-	bytes, err := json.Marshal(r)
-	if err != nil {
-		panic("cannot marshal request")
-	}
-	return string(bytes)
-}
 
 // WithRequestHeader allows to add any header to a request.
 // If multiple headers with the same name are defined only the last one is applied.

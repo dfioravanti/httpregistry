@@ -5,20 +5,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
-	"testing"
 )
 
 // Registry represents a collection of matches that associate to a http request a http response.
 // It contains all the Match that were registered and after the server is called it contains all the reasons why a request did not match with a particular match
 // the testing.T is used to signal that there was an unexpected error or that not all the responses were consumed as expected
 type Registry struct {
-	t       *testing.T
+	t       TestingT
 	matches []match
 	misses  []miss
 }
 
 // NewRegistry creates a new empty Registry
-func NewRegistry(t *testing.T) *Registry {
+func NewRegistry(t TestingT) *Registry {
 	reg := Registry{t: t}
 	return &reg
 }
@@ -32,7 +31,7 @@ func NewRegistry(t *testing.T) *Registry {
 // will create a http server that returns 200 on calling GET "/foo" and 404 on anything else
 func (reg *Registry) AddSimpleRequest(method string, URL string) {
 	request := NewRequest(method, URL)
-	reg.matches = append(reg.matches, newFixedResponseMatch(request, OkResponse))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
 }
 
 // AddSimpleRequestWithStatusCode adds to the registry a statusCode response for a request that matches method and URL
@@ -46,7 +45,7 @@ func (reg *Registry) AddSimpleRequestWithStatusCode(method string, URL string, s
 	request := NewRequest(method, URL)
 	response := NewResponse(statusCode, nil)
 
-	reg.matches = append(reg.matches, newFixedResponseMatch(request, response))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{response}))
 }
 
 // AddRequest adds to the registry a 200 response for a generic request that needs to be matched
@@ -59,7 +58,7 @@ func (reg *Registry) AddSimpleRequestWithStatusCode(method string, URL string, s
 //
 // will create a http server that returns 200 on calling GET "/foo" with the correct header and 404 on anything else
 func (reg *Registry) AddRequest(request Request) {
-	reg.matches = append(reg.matches, newFixedResponseMatch(request, OkResponse))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
 }
 
 // AddRequestWithResponse adds to the registry a generic response for a generic request that needs to be matched
@@ -73,7 +72,7 @@ func (reg *Registry) AddRequest(request Request) {
 //
 // will create a http server that returns 204 with "hello" as body on calling GET "/foo" with the correct header and 404 on anything else
 func (reg *Registry) AddRequestWithResponse(request Request, response Response) {
-	reg.matches = append(reg.matches, newFixedResponseMatch(request, response))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{response}))
 }
 
 // AddRequestWithResponses adds to the registry multiple responses for a generic request that needs to be matched.
@@ -90,7 +89,7 @@ func (reg *Registry) AddRequestWithResponse(request Request, response Response) 
 // will create a http server that returns 204 with "hello" as body on calling GET "/foo" the first call with the correct header,
 // it returns 200 with "hello again" as body on the second call with the correct header and 404 on anything else
 func (reg *Registry) AddRequestWithResponses(request Request, responses ...Response) {
-	reg.matches = append(reg.matches, newMultipleResponsesMatch(request, responses))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responses))
 }
 
 // GetMatchesForRequest returns the *http.Request that matched a generic Request
@@ -180,18 +179,21 @@ func (reg *Registry) GetServer() *httptest.Server {
 				continue
 			}
 
-			response, err := possibleMatch.NextResponse(r)
+			response, err := possibleMatch.NextResponse()
 			if err != nil {
 				if errors.Is(errNoNextResponseFound, err) {
 					reg.t.Errorf("run out of responses when calling: %v %v", requestToMatch.Method, requestToMatch.URL)
+					w.WriteHeader(http.StatusInternalServerError)
 				}
 			}
 
-			for k, v := range response.headers {
+			possibleMatch.RecordMatch(r)
+
+			for k, v := range response.Headers {
 				w.Header().Add(k, v)
 			}
-			w.WriteHeader(response.status)
-			_, err = w.Write(response.body)
+			w.WriteHeader(response.Status)
+			_, err = w.Write(response.Body)
 			if err != nil {
 				panic("cannot write body of request")
 			}
@@ -200,11 +202,25 @@ func (reg *Registry) GetServer() *httptest.Server {
 
 		res, err := httputil.DumpRequest(r, true)
 		if err != nil {
-			reg.t.Errorf("impossible to dump http request with error %v", err)
+			reg.t.Errorf("impossible to dump http request with error: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
-		reg.t.Errorf("no registered request matched %v\n you can use .Why() to get an explanation of why", string(res))
+		reg.t.Errorf("no registered request matched %v\n you can use .Why() in the debugger to get an explanation of why", string(res))
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
+}
+
+// CheckAllResponsesAreConsumed fails the test if there are unused responses at the end of the test.
+// This is useful to check if all the expected calls happened or if there is an unexpected behavior happening.
+func (reg *Registry) CheckAllResponsesAreConsumed() {
+	for _, match := range reg.matches {
+		response, err := match.NextResponse()
+		if err == nil {
+			reg.t.Errorf("request %v has %v as unused response", match.Request(), response)
+		}
+	}
 }
 
 // Why returns a string that contains all the reasons why the request submitted to the registry failed to match with the registered requests.
