@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 
 	"github.com/dfioravanti/httpregistry"
 )
@@ -365,4 +366,48 @@ func (s *TestSuite) TestMultipleCallsToTheSameURLWorks() {
 	res, err = client.Do(request)
 	s.NoError(err)
 	s.Equal(http.StatusNotFound, res.StatusCode)
+
+	registry.CheckAllResponsesAreConsumed()
+}
+
+func (s *TestSuite) TestTestUsingAllRoutesWorks() {
+	registry := httpregistry.NewRegistry(s.T())
+	registry.AddSimpleRequest(http.MethodGet, "/foo")
+	registry.AddSimpleRequest(http.MethodGet, "/bar")
+
+	url := registry.GetServer().URL
+	client := http.Client{}
+	_, _ = client.Get(url + "/foo")
+	_, _ = client.Get(url + "/bar")
+	registry.CheckAllResponsesAreConsumed()
+}
+
+func (s *TestSuite) TestUncalledRoutesTriggerAFailure() {
+	mockT := &httpregistry.MockTestingT{}
+
+	registry := httpregistry.NewRegistry(mockT)
+	registry.AddSimpleRequest(http.MethodGet, "/foo")
+	registry.AddSimpleRequest(http.MethodDelete, "/bar")
+
+	registry.CheckAllResponsesAreConsumed()
+
+	s.Equal(len(mockT.Messages), 2)
+	s.True(slices.Contains(mockT.Messages, "request {\"url\":\"/foo\",\"method\":\"GET\"} has {\"status\":200} as unused response"))
+	s.True(slices.Contains(mockT.Messages, "request {\"url\":\"/bar\",\"method\":\"DELETE\"} has {\"status\":200} as unused response"))
+}
+
+func (s *TestSuite) TestCallingTooMayTimesFails() {
+	mockT := &httpregistry.MockTestingT{}
+
+	registry := httpregistry.NewRegistry(mockT)
+	registry.AddSimpleRequest(http.MethodGet, "/foo")
+
+	url := registry.GetServer().URL
+	client := http.Client{}
+	_, _ = client.Get(url + "/foo")
+	_, _ = client.Get(url + "/foo")
+
+	s.True(mockT.HasFailed)
+	s.Equal(1, len(mockT.Messages))
+	s.True(slices.Contains(mockT.Messages, "run out of responses when calling: GET /foo"))
 }
