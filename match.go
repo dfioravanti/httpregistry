@@ -49,7 +49,7 @@ func (m *fixedResponseMatch) Request() Request {
 // Next response returns the next response associated with the match and records which request triggered the match.
 // It never raises an error
 func (m *fixedResponseMatch) NextResponse(req *http.Request) (Response, error) {
-	m.matches = append(m.matches, cloneHttpRequest(req))
+	m.matches = append(m.matches, cloneHTTPRequest(req))
 
 	return m.response, nil
 }
@@ -64,7 +64,7 @@ func (m *fixedResponseMatch) NumberOfCalls() int {
 	return len(m.matches)
 }
 
-// A FixedResponseMatch is a match that returns a different Response each time a predefined Request happens
+// A multipleResponsesMatch is a match that returns a different Response each time a predefined Request happens
 //
 // Important: the list of responses gets consumed by the server. Do not reuse this structure, create a new one
 type multipleResponsesMatch struct {
@@ -97,7 +97,7 @@ func (m *multipleResponsesMatch) NextResponse(req *http.Request) (Response, erro
 		return Response{}, errNoNextResponseFound
 	}
 
-	m.matches = append(m.matches, cloneHttpRequest(req))
+	m.matches = append(m.matches, cloneHTTPRequest(req))
 
 	head, tail := m.responses[0], m.responses[1:]
 	m.responses = tail

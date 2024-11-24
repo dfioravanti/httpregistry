@@ -23,10 +23,10 @@ func (s *TestSuite) TestMockMatchesOnRouteWorks() {
 		client := http.Client{}
 
 		s.Run(name, func() {
-			registry := httpregistry.NewRegistry()
-			registry.AddSimpleRequest(tc.matchPath, http.MethodGet)
+			registry := httpregistry.NewRegistry(s.T())
+			registry.AddSimpleRequest(http.MethodGet, tc.matchPath)
 
-			server := registry.GetServer(s.T())
+			server := registry.GetServer()
 			defer server.Close()
 
 			request, err := http.NewRequest(http.MethodGet, server.URL+tc.calledPath, nil)
@@ -41,7 +41,6 @@ func (s *TestSuite) TestMockMatchesOnRouteWorks() {
 }
 
 func (s *TestSuite) TestMockMatchesOnMethodWorks() {
-
 	testCases := []struct {
 		method string
 	}{
@@ -61,11 +60,10 @@ func (s *TestSuite) TestMockMatchesOnMethodWorks() {
 		client := http.Client{}
 
 		s.Run(name, func() {
+			registry := httpregistry.NewRegistry(s.T())
+			registry.AddSimpleRequest(tc.method, path)
 
-			registry := httpregistry.NewRegistry()
-			registry.AddSimpleRequest(path, tc.method)
-
-			server := registry.GetServer(s.T())
+			server := registry.GetServer()
 			defer server.Close()
 
 			request, err := http.NewRequest(tc.method, server.URL+path, nil)
@@ -79,8 +77,42 @@ func (s *TestSuite) TestMockMatchesOnMethodWorks() {
 	}
 }
 
-func (s *TestSuite) TestMockMatchesOnHeader() {
+func (s *TestSuite) TestAddSimpleRequestWithStatusCodeWorks() {
+	testCases := []struct {
+		statusCode int
+	}{
+		{http.StatusOK},
+		{http.StatusAccepted},
+		{http.StatusNoContent},
+		{http.StatusBadRequest},
+		{http.StatusUnauthorized},
+		{http.StatusInternalServerError},
+	}
+	for _, tc := range testCases {
+		name := fmt.Sprintf("returning %v", tc.statusCode)
+		method := http.MethodGet
+		path := "/test"
+		client := http.Client{}
 
+		s.Run(name, func() {
+			registry := httpregistry.NewRegistry(s.T())
+			registry.AddSimpleRequestWithStatusCode(method, path, tc.statusCode)
+
+			server := registry.GetServer()
+			defer server.Close()
+
+			request, err := http.NewRequest(method, server.URL+path, nil)
+			s.NoError(err)
+
+			res, err := client.Do(request)
+			s.NoError(err)
+
+			s.Equal(tc.statusCode, res.StatusCode)
+		})
+	}
+}
+
+func (s *TestSuite) TestMockMatchesOnHeader() {
 	testCases := []struct {
 		headers map[string]string
 	}{
@@ -93,13 +125,10 @@ func (s *TestSuite) TestMockMatchesOnHeader() {
 		client := http.Client{}
 
 		s.Run(name, func() {
+			registry := httpregistry.NewRegistry(s.T())
+			registry.AddRequest(httpregistry.NewRequest(http.MethodGet, path, httpregistry.WithRequestHeaders(tc.headers)))
 
-			registry := httpregistry.NewRegistry()
-			registry.AddRequest(
-				httpregistry.NewRequest(path, http.MethodGet, httpregistry.WithRequestHeaders(tc.headers)),
-			)
-
-			server := registry.GetServer(s.T())
+			server := registry.GetServer()
 			defer server.Close()
 
 			request, err := http.NewRequest(http.MethodGet, server.URL+path, nil)
@@ -117,7 +146,6 @@ func (s *TestSuite) TestMockMatchesOnHeader() {
 }
 
 func (s *TestSuite) TestAccessTheRequestBodyWorks() {
-
 	path := "/users"
 
 	expectedBody := []byte(`
@@ -128,11 +156,11 @@ func (s *TestSuite) TestAccessTheRequestBodyWorks() {
 	}
 	`)
 
-	registry := httpregistry.NewRegistry()
-	mockRequest := httpregistry.NewRequest(path, http.MethodPost)
+	registry := httpregistry.NewRegistry(s.T())
+	mockRequest := httpregistry.NewRequest(http.MethodPost, path)
 	registry.AddRequest(mockRequest)
 
-	server := registry.GetServer(s.T())
+	server := registry.GetServer()
 	defer server.Close()
 
 	req, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewBuffer(expectedBody))
@@ -144,7 +172,7 @@ func (s *TestSuite) TestAccessTheRequestBodyWorks() {
 
 	s.Equal(http.StatusOK, res.StatusCode)
 
-	matchingRequests := registry.GetMatchesPerRequest(mockRequest)
+	matchingRequests := registry.GetMatchesForRequest(mockRequest)
 	s.Equal(1, len(matchingRequests))
 
 	bodyBytes, err := io.ReadAll(matchingRequests[0].Body)
@@ -154,7 +182,6 @@ func (s *TestSuite) TestAccessTheRequestBodyWorks() {
 }
 
 func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
-
 	path := "/users"
 
 	expectedBody := []byte(`
@@ -165,10 +192,10 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
 	}
 	`)
 
-	registry := httpregistry.NewRegistry()
-	registry.AddSimpleRequest(path, http.MethodPost)
+	registry := httpregistry.NewRegistry(s.T())
+	registry.AddSimpleRequest(http.MethodPost, path)
 
-	server := registry.GetServer(s.T())
+	server := registry.GetServer()
 	defer server.Close()
 
 	req, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewBuffer(expectedBody))
@@ -180,7 +207,7 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
 
 	s.Equal(http.StatusOK, res.StatusCode)
 
-	matchingRequests := registry.GetMatchesUrl(path)
+	matchingRequests := registry.GetMatchesForURL(path)
 	s.Equal(1, len(matchingRequests))
 
 	bodyBytes, err := io.ReadAll(matchingRequests[0].Body)
@@ -190,7 +217,6 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
 }
 
 func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
-
 	path := "/users"
 
 	expectedBody := []byte(`
@@ -201,10 +227,10 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
 	}
 	`)
 
-	registry := httpregistry.NewRegistry()
-	registry.AddSimpleRequest(path, http.MethodPost)
+	registry := httpregistry.NewRegistry(s.T())
+	registry.AddSimpleRequest(http.MethodPost, path)
 
-	server := registry.GetServer(s.T())
+	server := registry.GetServer()
 	defer server.Close()
 
 	req, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewBuffer(expectedBody))
@@ -216,7 +242,7 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
 
 	s.Equal(http.StatusOK, res.StatusCode)
 
-	matchingRequests := registry.GetMatchesUrlAndMethod(path, http.MethodPost)
+	matchingRequests := registry.GetMatchesURLAndMethod(path, http.MethodPost)
 	s.Equal(1, len(matchingRequests))
 
 	bodyBytes, err := io.ReadAll(matchingRequests[0].Body)
@@ -226,7 +252,6 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
 }
 
 func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodDoesNotMatchCorrectly() {
-
 	path := "/users"
 
 	expectedBody := []byte(`
@@ -237,10 +262,10 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodDoesNotMatchCorrectly(
 	}
 	`)
 
-	registry := httpregistry.NewRegistry()
-	registry.AddSimpleRequest(path, http.MethodPost)
+	registry := httpregistry.NewRegistry(s.T())
+	registry.AddSimpleRequest(http.MethodPost, path)
 
-	server := registry.GetServer(s.T())
+	server := registry.GetServer()
 	defer server.Close()
 
 	req, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewBuffer(expectedBody))
@@ -252,12 +277,11 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodDoesNotMatchCorrectly(
 
 	s.Equal(http.StatusOK, res.StatusCode)
 
-	matchingRequests := registry.GetMatchesUrlAndMethod(path, http.MethodGet)
+	matchingRequests := registry.GetMatchesURLAndMethod(path, http.MethodGet)
 	s.Equal(0, len(matchingRequests))
 }
 
 func (s *TestSuite) TestMockResponseWithBody() {
-
 	path := "/users"
 
 	expectedBody := []byte(`
@@ -268,13 +292,13 @@ func (s *TestSuite) TestMockResponseWithBody() {
 	}
 	`)
 
-	registry := httpregistry.NewRegistry()
+	registry := httpregistry.NewRegistry(s.T())
 	registry.AddRequestWithResponse(
-		httpregistry.NewRequest(path, http.MethodPost),
+		httpregistry.NewRequest(http.MethodPost, path),
 		httpregistry.NewResponse(http.StatusCreated, expectedBody),
 	)
 
-	server := registry.GetServer(s.T())
+	server := registry.GetServer()
 	defer server.Close()
 	client := http.Client{}
 
@@ -306,15 +330,15 @@ func (s *TestSuite) TestMultipleCallsToTheSameURLWorks() {
 	}
 	`)
 
-	registry := httpregistry.NewRegistry()
+	registry := httpregistry.NewRegistry(s.T())
 	registry.AddRequestWithResponses(
-		httpregistry.NewRequest(path, http.MethodGet),
+		httpregistry.NewRequest(http.MethodGet, path),
 		httpregistry.NewResponse(http.StatusCreated, expectedFirstUser),
 		httpregistry.NewResponse(http.StatusCreated, expectedSecondUser),
 		httpregistry.NewResponse(http.StatusNotFound, nil),
 	)
 
-	server := registry.GetServer(s.T())
+	server := registry.GetServer()
 	defer server.Close()
 	client := http.Client{}
 

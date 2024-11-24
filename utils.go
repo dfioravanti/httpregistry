@@ -7,10 +7,9 @@ import (
 	"net/http"
 )
 
-// cloneHttpRequest clones a http.Request in full
+// cloneHTTPRequest clones a http.Request in full
 // By default the .clone does not clone the body
-func cloneHttpRequest(req *http.Request) *http.Request {
-
+func cloneHTTPRequest(req *http.Request) *http.Request {
 	var buf []byte
 	var err error
 	if req.Body != nil {
