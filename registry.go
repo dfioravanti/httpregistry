@@ -81,6 +81,47 @@ func (reg *Registry) GetMatchesUrlAndMethod(url string, method string) []*http.R
 	return []*http.Request{}
 }
 
+// doesRegisteredMatchMatchIncomingRequest checks if the incoming request is a match for the match that we are currently evaluating.
+// If it is not a match this function will return a slice of miss objects that explain why the match is not possible.
+func doesRegisteredMatchMatchIncomingRequest(registeredMatch match, r *http.Request) (bool, []miss) {
+	expectedUrlAsRegex := registeredMatch.Request().urlAsRegex
+	expectedMethod := registeredMatch.Request().Method
+	expectedHeaders := registeredMatch.Request().Headers
+
+	if !expectedUrlAsRegex.MatchString(r.URL.String()) {
+		return false, []miss{{
+			MissedMatch: registeredMatch,
+			Why:         pathDoesNotMatch,
+		}}
+
+	}
+
+	if expectedMethod != r.Method {
+		return false, []miss{{
+			MissedMatch: registeredMatch,
+			Why:         methodDoesNotMatch,
+		}}
+	}
+
+	headersMisses := []miss{}
+	for headerToMatch, valueToMatch := range expectedHeaders {
+		value := r.Header.Get(headerToMatch)
+		if value == "" || value != valueToMatch {
+			miss := miss{
+				MissedMatch: registeredMatch,
+				Why:         headersDoNotMatch,
+			}
+			headersMisses = append(headersMisses, miss)
+		}
+	}
+
+	if len(headersMisses) != 0 {
+		return false, headersMisses
+	}
+
+	return true, nil
+}
+
 // GetServer returns a httptest.Server designed to match all the requests registered with the Registry
 func (reg *Registry) GetServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -90,43 +131,9 @@ func (reg *Registry) GetServer(t *testing.T) *httptest.Server {
 		for _, possibleMatch := range reg.matches {
 			requestToMatch := possibleMatch.Request()
 
-			if !requestToMatch.urlAsRegex.MatchString(r.URL.String()) {
-				miss := miss{
-					MissedMatch: requestToMatch,
-					Why:         pathDoesNotMatch,
-				}
-				reg.misses = append(reg.misses, miss)
-
-				continue
-			}
-
-			if requestToMatch.Method != r.Method {
-				miss := miss{
-					MissedMatch: requestToMatch,
-					Why:         methodDoesNotMatch,
-				}
-				reg.misses = append(reg.misses, miss)
-
-				continue
-			}
-
-			headersToMatch := requestToMatch.Headers
-			headersMatch := true
-			for headerToMatch, valueToMatch := range headersToMatch {
-				value := r.Header.Get(headerToMatch)
-				if value == "" || value != valueToMatch {
-					headersMatch = false
-					miss := miss{
-						MissedMatch: requestToMatch,
-						Why:         headersDoNotMatch,
-					}
-					reg.misses = append(reg.misses, miss)
-
-					break
-				}
-			}
-
-			if !headersMatch {
+			doesMatch, misses := doesRegisteredMatchMatchIncomingRequest(possibleMatch, r)
+			if !doesMatch {
+				reg.misses = append(reg.misses, misses...)
 				continue
 			}
 

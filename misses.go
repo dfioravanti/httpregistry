@@ -11,10 +11,10 @@ const (
 )
 
 type miss struct {
-	MissedMatch Request
+	MissedMatch match
 	Why         whyMissed
 }
 
 func (m miss) String() string {
-	return fmt.Sprintf("%v missed %v", m.MissedMatch, m.Why)
+	return fmt.Sprintf("%v missed %v", m.MissedMatch.Request(), m.Why)
 }
