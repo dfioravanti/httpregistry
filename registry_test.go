@@ -405,9 +405,13 @@ func (s *TestSuite) TestCallingTooMayTimesFails() {
 	url := registry.GetServer().URL
 	client := http.Client{}
 	_, _ = client.Get(url + "/foo")
-	_, _ = client.Get(url + "/foo")
+	response, err := client.Get(url + "/foo")
+	s.NoError(err)
+
+	bodyBytes, err := io.ReadAll(response.Body)
+	s.NoError(err)
+	body := string(bodyBytes)
 
 	s.True(mockT.HasFailed)
-	s.Equal(1, len(mockT.Messages))
-	s.True(slices.Contains(mockT.Messages, "run out of responses when calling: GET /foo"))
+	s.Equal(body, "[{\"request\":{\"url\":\"/foo\",\"method\":\"GET\"},\"why\":\"The route matches but there was no response available\"}]")
 }
