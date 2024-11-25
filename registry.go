@@ -1,6 +1,7 @@
 package httpregistry
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -132,28 +133,18 @@ func doesRegisteredMatchMatchIncomingRequest(registeredMatch match, r *http.Requ
 	expectedHeaders := registeredMatch.Request().Headers
 
 	if !expectedURLAsRegex.MatchString(r.URL.String()) {
-		return false, []miss{{
-			MissedMatch: registeredMatch,
-			Why:         pathDoesNotMatch,
-		}}
+		return false, []miss{newMiss(registeredMatch, pathDoesNotMatch)}
 	}
 
 	if expectedMethod != r.Method {
-		return false, []miss{{
-			MissedMatch: registeredMatch,
-			Why:         methodDoesNotMatch,
-		}}
+		return false, []miss{newMiss(registeredMatch, methodDoesNotMatch)}
 	}
 
 	headersMisses := []miss{}
 	for headerToMatch, valueToMatch := range expectedHeaders {
 		value := r.Header.Get(headerToMatch)
 		if value == "" || value != valueToMatch {
-			miss := miss{
-				MissedMatch: registeredMatch,
-				Why:         headerDoesNotMatch,
-			}
-			headersMisses = append(headersMisses, miss)
+			headersMisses = append(headersMisses, newMiss(registeredMatch, headerDoesNotMatch))
 		}
 	}
 
@@ -171,8 +162,6 @@ func (reg *Registry) GetServer() *httptest.Server {
 		// If said request did not match then the test would have crashed in any case so the information in misses is useless.
 		reg.misses = []miss{}
 		for _, possibleMatch := range reg.matches {
-			requestToMatch := possibleMatch.Request()
-
 			doesMatch, misses := doesRegisteredMatchMatchIncomingRequest(possibleMatch, r)
 			if !doesMatch {
 				reg.misses = append(reg.misses, misses...)
@@ -182,8 +171,8 @@ func (reg *Registry) GetServer() *httptest.Server {
 			response, err := possibleMatch.NextResponse()
 			if err != nil {
 				if errors.Is(errNoNextResponseFound, err) {
-					reg.t.Errorf("run out of responses when calling: %v %v", requestToMatch.Method, requestToMatch.URL)
-					w.WriteHeader(http.StatusInternalServerError)
+					reg.misses = append(reg.misses, newMiss(possibleMatch, outOfResponses))
+					continue
 				}
 			}
 
@@ -207,8 +196,10 @@ func (reg *Registry) GetServer() *httptest.Server {
 			return
 		}
 
-		reg.t.Errorf("no registered request matched %v\n you can use .Why() in the debugger to get an explanation of why", string(res))
+		reg.t.Errorf("no registered request matched %v\n The reasons why this is the case are returned in the body", string(res))
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(reg.Why()))
 	}))
 }
 
@@ -227,9 +218,9 @@ func (reg *Registry) CheckAllResponsesAreConsumed() {
 // The envision use of this function is just as a helper when debugging the tests,
 // most of the time it might not be obvious if there is a typo or a small error.
 func (reg *Registry) Why() string {
-	output := ""
-	for _, miss := range reg.misses {
-		output += miss.String() + "\n"
+	output, err := json.Marshal(reg.misses)
+	if err != nil {
+		reg.t.Errorf("impossible to serialize matches to json: %v", err)
 	}
-	return output
+	return string(output)
 }
