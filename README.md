@@ -25,7 +25,7 @@ func TestHttpRegistryWorks(t *testing.T) {
 	defer registry.CheckAllResponsesAreConsumed()
 
     // 2. Add request to the registry
-	registry.AddSimpleRequest(http.MethodGet, "/users")
+	registry.AddMethodAndURL(http.MethodGet, "/users")
 
     // 3. Create the server
 	server := registry.GetServer()
@@ -84,10 +84,10 @@ func TestMultipleMatchingWorks(t *testing.T) {
 	defer registry.CheckAllResponsesAreConsumed()
 
 	// 2. Add requests to the registry
-	registry.AddSimpleRequestWithStatusCode(
+	registry.AddMethodAndURLWithStatusCode(
         http.MethodGet, "/users", http.StatusOK,
     )
-	registry.AddSimpleRequestWithStatusCode(
+	registry.AddMethodAndURLWithStatusCode(
         http.MethodGet, "/users", http.StatusNotFound,
     )
 
