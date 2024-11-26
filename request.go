@@ -9,10 +9,51 @@ import (
 // Request represents a request that will be registered to a Registry to get matched against an incoming HTTP request.
 // The match happens against the method, the headers and the URL interpreted as a regex
 type Request struct {
-	URL        string            `json:"url"`
-	Method     string            `json:"method"`
+	URL        string            `json:"url,omitempty"`
+	Method     string            `json:"method,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
+	Body       []byte            `json:"body,omitempty"`
 	urlAsRegex regexp.Regexp
+}
+
+// WithURL returns a new request with the URL attribute set to URL
+func (r Request) WithURL(URL string) Request {
+	r.URL = URL
+	r.urlAsRegex = *regexp.MustCompile(URL)
+	return r
+}
+
+// WithMethod returns a new request with the method attribute set to method
+func (r Request) WithMethod(method string) Request {
+	r.Method = method
+	return r
+}
+
+// WithHeader returns a new request with the header header set to value
+func (r Request) WithHeader(header string, value string) Request {
+	r.Headers[header] = value
+	return r
+}
+
+// WithJSONHeader returns a new request with the header `Content-Type` set to `application/json`
+func (r Request) WithJSONHeader() Request {
+	r.Headers["Content-Type"] = "application/json"
+	return r
+}
+
+// WithHeaders returns a new request with all the headers in headers applied.
+// If multiple headers with the same name are defined only the last one is applied.
+func (r Request) WithHeaders(headers map[string]string) Request {
+	for k, v := range headers {
+		r.Headers[k] = v
+	}
+	return r
+}
+
+// WithBody returns a new request with the method body set to body
+func (r Request) WithBody(body []byte) Request {
+	r.Body = body
+	return r
 }
 
 // Equal checks if a request is identical to another
@@ -29,65 +70,22 @@ func (r Request) String() string {
 	return string(bytes)
 }
 
-// RequestOption represents a option that can be passed to NewRequest when creating a new request.
-// NewRequest uses the Option patters to make it easy to configure the request behavior.
+// NewRequest creates a new request designed to be registered to a Registry to get matched against an incoming HTTP request.
+// This function is designed to be used in conjunction with other other receivers.
 // For example
 //
-//	NewRequest(GET, "/foo", WithResponseHeader("Content-Type", "application/json"))
-//
-// will return a request with the desired content type
-type RequestOption func(*Request)
-
-// WithRequestHeader allows to add any header to a request.
-// If multiple headers with the same name are defined only the last one is applied.
-// To define multiple headers it is recommended to use WithRequestHeaders but it is possible to chain multiple calls of WithResponseHeader.
-func WithRequestHeader(header string, value string) RequestOption {
-	return func(r *Request) {
-		r.Headers[header] = value
-	}
-}
-
-// WithRequestHeaders allows to add any number of headers to a request.
-// If multiple headers with the same name are defined only the last one is applied.
-func WithRequestHeaders(headers map[string]string) RequestOption {
-	return func(r *Request) {
-		for k, v := range headers {
-			r.Headers[k] = v
-		}
-	}
-}
-
-// NewRequest creates a new request designed to be registered to a Registry to get matched against an incoming HTTP request.
-// The match happens against the method and the URL interpreted as a regex.
-// If further options are passed they will be applied one after the other.
-func NewRequest(method string, url string, options ...RequestOption) Request {
+//	NewRequest().
+//		WithURL("/users/1").
+//		WithMethod(http.MethodPatch).
+//		WithJSONHeader().
+//		WithBody([]byte("{\"user\": \"John Schmidt\"}"))
+func NewRequest() Request {
 	r := Request{
-		URL:        url,
-		urlAsRegex: *regexp.MustCompile(url),
-		Method:     method,
+		URL:        "",
+		urlAsRegex: *regexp.MustCompile(".+"),
+		Method:     "",
 		Headers:    make(map[string]string),
+		Body:       make([]byte, 0),
 	}
-	for _, o := range options {
-		o(&r)
-	}
-
-	return r
-}
-
-// NewJSONRequest creates a new request designed to be registered to a Registry to get matched against an incoming HTTP request.
-// The match happens against the method and the URL interpreted as a regex.
-// If further options are passed they will be applied one after the other.
-// The "Content-Type" header is set to "application/json"
-func NewJSONRequest(method string, url string, options ...RequestOption) Request {
-	r := Request{
-		URL:        url,
-		urlAsRegex: *regexp.MustCompile(url),
-		Method:     method,
-		Headers:    make(map[string]string),
-	}
-	for _, o := range options {
-		o(&r)
-	}
-	r.Headers["Content-Type"] = "application/json"
 	return r
 }
