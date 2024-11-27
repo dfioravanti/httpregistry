@@ -16,10 +16,20 @@ For example it is normal to write test code like this
 
 with this package this can be simplified to
 
-	registry := NewRegistry()
-	registry.AddSimpleRequest("/users", http.MethodGet)
+	registry := NewRegistry(t)
+	registry.AddMethodAndURL("/users", http.MethodGet)
 	ts := registry.GetServer()
 
-Similarly this package tries to help with the harder task to test if a POST requests
+Similarly this package tries to help with the harder task to test if a POST/PUT request actually happen to have the expected body/parameters.
+With this library this can be done as
+
+	registry := NewRegistry(t)
+	registry.AddRequest(
+		httpregistry.Request().
+		WithURL("/users").
+		WithMethod(http.MethodPost).
+		WithJSONHeader().
+		WithBody([]byte("{\"user\": \"John Schmidt\"}"))
+	ts := registry.GetServer()
 */
 package httpregistry

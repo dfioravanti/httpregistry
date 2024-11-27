@@ -3,6 +3,8 @@ package httpregistry
 import "fmt"
 
 // TestingT is the subset of [testing.T] (see also [testing.TB]) used by the httpregistry package.
+// The reason why this exists is so that we can mock in testa and check if failures happen when we expect.
+// By design testing.TB make it impossible for the end user to implement the interface so this is the only way to do so
 type TestingT interface {
 	Fail()
 	Errorf(format string, args ...any)
