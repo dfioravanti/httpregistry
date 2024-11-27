@@ -11,6 +11,12 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go_version:
+          - stable
+          - oldstable
+
     steps:
     - uses: actions/checkout@v4
 
@@ -22,11 +28,11 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: ${{ matrix.go_version }}
         cache: false
 
     - name: Build
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v -race ./...
