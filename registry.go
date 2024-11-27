@@ -181,7 +181,7 @@ func (reg *Registry) GetMatchesForRequest(r Request) []*http.Request {
 	return []*http.Request{}
 }
 
-// GetMatchesForURL returns the *http.Request that matched a specific URL independently of the method used to call it
+// GetMatchesForURL returns the http.Requests that matched a specific URL independently of the method used to call it
 func (reg *Registry) GetMatchesForURL(url string) []*http.Request {
 	for _, match := range reg.matches {
 		r := match.Request()
@@ -192,7 +192,7 @@ func (reg *Registry) GetMatchesForURL(url string) []*http.Request {
 	return []*http.Request{}
 }
 
-// GetMatchesURLAndMethod returns the *http.Request that matched a specific method, URL pair
+// GetMatchesURLAndMethod returns the http.Requests that matched a specific method, URL pair
 func (reg *Registry) GetMatchesURLAndMethod(url string, method string) []*http.Request {
 	for _, match := range reg.matches {
 		r := match.Request()

@@ -31,7 +31,7 @@ func TestHttpRegistryWorks(t *testing.T) {
 	server := registry.GetServer()
 	defer server.Close()
 
-    // 4. Make calls
+    // 4. Make calls, since we registered a single call then if we would call "/users" again it would fail
 	response, err := http.Get(server.URL + "/users")
 	if err != nil {
 		t.Errorf("executing request failed: %v", err)
