@@ -2,6 +2,7 @@ package httpregistry
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // The list of all status codes is available at
@@ -129,6 +130,27 @@ func (r Response) WithBody(body []byte) Response {
 	return r
 }
 
+// WithJSONBody returns a new response that will return body as body and will have
+// the header `Content-Type` set to `application/json`
+func (r Response) WithJSONBody(body string) Response {
+	r = r.WithJSONHeader()
+	r.Body = []byte(body)
+	return r
+}
+
+// WithJSONMarshalerBody returns a new response that will return body as body.MarshalJSON() and will have
+// the header `Content-Type` set to `application/json`.
+// This method will panic if MarshalJSON fails
+func (r Response) WithJSONMarshalerBody(body json.Marshaler) Response {
+	r = r.WithJSONHeader()
+	bodyAsString, err := body.MarshalJSON()
+	if err != nil {
+		panic(fmt.Sprintf("body cannot be marshaled to JSON: %s", err.Error()))
+	}
+	r.Body = bodyAsString
+	return r
+}
+
 // Responses represents a slices of responses
 type Responses = []Response
 
@@ -140,9 +162,11 @@ type Responses = []Response
 //		WithStatus(http.StatusOK).
 //		WithJSONHeader().
 //		WithBody([]byte("{\"user\": \"John Schmidt\"}"))
+//
+// The default response is a 200 without any body nor header
 func NewResponse() Response {
 	r := Response{
-		StatusCode: 0,
+		StatusCode: 200,
 		Body:       make([]byte, 0),
 		Headers:    make(map[string]string),
 	}
