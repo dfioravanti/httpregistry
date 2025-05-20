@@ -56,6 +56,21 @@ func (r Request) WithBody(body []byte) Request {
 	return r
 }
 
+// WithStringBody returns a new request with the method body set to body
+func (r Request) WithStringBody(body string) Request {
+	r.Body = []byte(body)
+	return r
+}
+
+// WithJSONBody returns a new request with the method body set to the JSON encoded version of body and
+// the Content-Type header set to "application/json".
+// This method panics if body cannot be converted to JSON
+func (r Request) WithJSONBody(body any) Request {
+	r = r.WithJSONHeader()
+	r.Body = mustMarshalJSON(body)
+	return r
+}
+
 // Equal checks if a request is identical to another
 func (r Request) Equal(r2 Request) bool {
 	return reflect.DeepEqual(r, r2)

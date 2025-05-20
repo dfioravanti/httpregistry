@@ -516,3 +516,58 @@ func (s *TestSuite) TestCallingTooMayTimesFails() {
 	s.True(mockT.HasFailed)
 	s.Equal(body, "[{\"request\":{\"url\":\"/foo\",\"method\":\"GET\"},\"why\":\"The route matches but there was no response available\"}]")
 }
+
+func (s *TestSuite) TestMatchArbitraryRequests() {
+	testCases := []struct {
+		name          string
+		request       httpregistry.Request
+		methodToCall  string
+		pathToCall    string
+		bodyToCall    []byte
+		headersToCall http.Header
+	}{
+		{
+			name: "match url",
+			request: httpregistry.NewRequest().
+				WithURL("/foo"),
+			methodToCall: http.MethodGet,
+			pathToCall:   "/foo",
+		},
+		{
+			name: "match json body",
+			request: httpregistry.NewRequest().
+				WithURL("/foo").
+				WithMethod(http.MethodPost).
+				WithJSONBody(map[string]int{"foo": 10, "bar": 20}),
+			methodToCall: http.MethodPost,
+			pathToCall:   "/foo",
+			bodyToCall:   mustMarshalJSON(map[string]int{"foo": 10, "bar": 20}),
+		},
+	}
+	for _, tc := range testCases {
+		client := http.Client{}
+
+		s.Run(tc.name, func() {
+			registry := httpregistry.NewRegistry(s.T())
+			registry.AddRequest(tc.request)
+
+			server := registry.GetServer()
+			defer server.Close()
+
+			b := bytes.NewReader(tc.bodyToCall)
+			request, err := http.NewRequest(tc.methodToCall, server.URL+tc.pathToCall, b)
+			s.NoError(err)
+
+			for k, hs := range tc.headersToCall {
+				for _, h := range hs {
+					request.Header.Add(k, h)
+				}
+			}
+
+			res, err := client.Do(request)
+			s.NoError(err)
+
+			s.Equal(http.StatusOK, res.StatusCode)
+		})
+	}
+}
