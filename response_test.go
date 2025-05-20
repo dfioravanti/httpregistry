@@ -23,14 +23,14 @@ func (s *TestSuite) TestCustomResponseReturnsExpectedHeadersAndBody() {
 	}{
 		{
 			name:            "json response works",
-			response:        NewResponse().WithJSONBody("{\"a\": 10}"),
-			expectedBody:    "{\"a\": 10}",
+			response:        NewResponse().WithJSONBody(map[string]int{"a": 10}),
+			expectedBody:    "{\"a\":10}",
 			expectedHeaders: map[string][]string{"Content-Type": {"application/json"}},
 		},
 		{
 			name:            "json marshaler response works",
-			response:        NewResponse().WithJSONMarshalerBody(typeMarshable{A: 10}),
-			expectedBody:    "{\"a\": 10}",
+			response:        NewResponse().WithJSONBody(typeMarshable{A: 10}),
+			expectedBody:    "{\"a\":10}",
 			expectedHeaders: map[string][]string{"Content-Type": {"application/json"}},
 		},
 	}

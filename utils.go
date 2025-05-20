@@ -2,6 +2,7 @@ package httpregistry
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,4 +26,13 @@ func cloneHTTPRequest(req *http.Request) *http.Request {
 	newRequest.Body = io.NopCloser(bytes.NewBuffer(buf))
 
 	return newRequest
+}
+
+// mustMarshalJSON tries to marshal v into JSON and panics if it cannot
+func mustMarshalJSON(v any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(fmt.Sprintf("body cannot be marshaled to JSON: %s", err))
+	}
+	return b
 }
