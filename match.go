@@ -18,7 +18,7 @@ type match interface {
 	RecordMatch(req *http.Request)
 	// Next response returns the next response associated with the match and records which request triggered the match.
 	// If the list of responses is exhausted it will return a ErrNoNextResponseFound error
-	NextResponse() (Response, error)
+	NextResponse() (mockResponse, error)
 	// NumberOfCalls returns the number of times the match was fulfilled
 	NumberOfCalls() int
 	// Matches returns the list of http.Request that matched with this Match
@@ -29,13 +29,13 @@ type match interface {
 // Important: the list of responses gets consumed by the server. Do not reuse this structure, create a new one
 type consumableResponsesMatch struct {
 	request       Request
-	responses     Responses
+	responses     mockResponses
 	numberOfCalls int
 	matches       []*http.Request
 }
 
 // newConsumableResponsesMatch creates a new consumableResponsesMatch
-func newConsumableResponsesMatch(request Request, responses Responses) *consumableResponsesMatch {
+func newConsumableResponsesMatch(request Request, responses mockResponses) *consumableResponsesMatch {
 	return &consumableResponsesMatch{
 		request:       request,
 		responses:     responses,
@@ -57,9 +57,9 @@ func (m *consumableResponsesMatch) RecordMatch(req *http.Request) {
 // Next response returns the next response associated with the match.
 // If the list of responses is exhausted it will return a ErrNoNextResponseFound error
 // It consumes the list associated with the MultipleResponsesMatch
-func (m *consumableResponsesMatch) NextResponse() (Response, error) {
+func (m *consumableResponsesMatch) NextResponse() (mockResponse, error) {
 	if len(m.responses) == 0 {
-		return Response{}, errNoNextResponseFound
+		return nil, errNoNextResponseFound
 	}
 
 	head, tail := m.responses[0], m.responses[1:]

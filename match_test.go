@@ -6,7 +6,7 @@ import (
 
 func (s *TestSuite) TestMultipleResponsesHasExpectedResponse() {
 	request := NewRequest().WithMethod(http.MethodPost).WithURL("/")
-	responses := Responses{NoContentResponse}
+	responses := mockResponses{NoContentResponse}
 
 	match := newConsumableResponsesMatch(request, responses)
 
@@ -18,7 +18,7 @@ func (s *TestSuite) TestMultipleResponsesRespondsTheCorrectNumberOfTimes() {
 
 	expectedFirstResponse := CreatedResponse
 	expectedSecondResponse := NoContentResponse
-	responses := Responses{expectedFirstResponse, expectedSecondResponse}
+	responses := mockResponses{expectedFirstResponse, expectedSecondResponse}
 
 	match := newConsumableResponsesMatch(request, responses)
 
