@@ -35,7 +35,7 @@ func NewRegistry(t TestingT) *Registry {
 // will create a http server that returns 200 on calling anything.
 func (reg *Registry) Add() {
 	request := NewRequest()
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
 // AddURL adds to the registry a 200 response for a request that matches the URL
@@ -47,7 +47,7 @@ func (reg *Registry) Add() {
 // will create a http server that returns 200 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddURL(URL string) {
 	request := NewRequest().WithURL(URL)
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
 // AddURLWithStatusCode adds to the registry a statusCode response for a request that matches the URL
@@ -61,7 +61,7 @@ func (reg *Registry) AddURLWithStatusCode(URL string, statusCode int) {
 	request := NewRequest().WithURL(URL)
 	response := NewResponse().WithStatus(statusCode)
 
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{response}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
 
 // AddMethod adds to the registry a 200 response for a request that matches the method
@@ -73,7 +73,7 @@ func (reg *Registry) AddURLWithStatusCode(URL string, statusCode int) {
 // will create a http server that returns 200 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddMethod(method string) {
 	request := NewRequest().WithMethod(method)
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
 // AddMethodWithStatusCode adds to the registry a statusCode response for a request that matches the method
@@ -86,7 +86,7 @@ func (reg *Registry) AddMethod(method string) {
 func (reg *Registry) AddMethodWithStatusCode(method string, statusCode int) {
 	request := NewRequest().WithMethod(method)
 	response := NewResponse().WithStatus(statusCode)
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{response}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
 
 // AddMethodAndURL adds to the registry a 200 response for a request that matches method and URL
@@ -98,7 +98,7 @@ func (reg *Registry) AddMethodWithStatusCode(method string, statusCode int) {
 // will create a http server that returns 200 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddMethodAndURL(method string, URL string) {
 	request := NewRequest().WithMethod(method).WithURL(URL)
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
 // AddMethodAndURLWithStatusCode adds to the registry a statusCode response for a request that matches method and URL
@@ -112,7 +112,7 @@ func (reg *Registry) AddMethodAndURLWithStatusCode(method string, URL string, st
 	request := NewRequest().WithMethod(method).WithURL(URL)
 	response := NewResponse().WithStatus(statusCode)
 
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{response}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
 
 // AddBody adds to the registry a statusCode response for a request that matches method and URL
@@ -124,7 +124,7 @@ func (reg *Registry) AddMethodAndURLWithStatusCode(method string, URL string, st
 // will create a http server that returns 204 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddBody(body []byte) {
 	request := NewRequest().WithBody(body)
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
 // AddRequest adds to the registry a 200 response for a generic request that needs to be matched
@@ -137,7 +137,36 @@ func (reg *Registry) AddBody(body []byte) {
 //
 // will create a http server that returns 200 on calling GET "/foo" with the correct header and fails the test on anything else
 func (reg *Registry) AddRequest(request Request) {
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{OkResponse}))
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
+}
+
+// AddResponse adds to the registry a generic response that is returned for any call
+//
+//	reg := httpregistry.NewRegistry(t)
+//	reg.AddResponse(
+//		httpregistry.NewResponse(http.StatusCreated, []byte{"hello"}),
+//	)
+//	reg.GetServer()
+//
+// will create a http server that returns 204 with "hello" as body on calling the server on any URL
+func (reg *Registry) AddResponse(response mockResponse) {
+	request := NewRequest()
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
+}
+
+// AddResponses adds to the registry a generic response that is returned for any call
+//
+//		reg := httpregistry.NewRegistry(t)
+//		reg.AddResponses(
+//			httpregistry.NewResponse(http.StatusCreated, []byte{"hello"}),
+//	     httpregistry.NewResponse(http.StatusCreated, []byte{"hello"}),
+//		)
+//		reg.GetServer()
+//
+// will create a http server that returns 204 with "hello" as body on calling the server on any URL for two times and then returns an error
+func (reg *Registry) AddResponses(responses ...mockResponse) {
+	request := NewRequest()
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responses))
 }
 
 // AddRequestWithResponse adds to the registry a generic response for a generic request that needs to be matched
@@ -150,8 +179,8 @@ func (reg *Registry) AddRequest(request Request) {
 //	reg.GetServer()
 //
 // will create a http server that returns 204 with "hello" as body on calling GET "/foo" with the correct header and fails the test on anything else
-func (reg *Registry) AddRequestWithResponse(request Request, response Response) {
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, []Response{response}))
+func (reg *Registry) AddRequestWithResponse(request Request, response mockResponse) {
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
 
 // AddRequestWithResponses adds to the registry multiple responses for a generic request that needs to be matched.
@@ -167,7 +196,7 @@ func (reg *Registry) AddRequestWithResponse(request Request, response Response) 
 //
 // will create a http server that returns 204 with "hello" as body on calling GET "/foo" the first call with the correct header,
 // it returns 200 with "hello again" as body on the second call with the correct header and fails the test on anything else
-func (reg *Registry) AddRequestWithResponses(request Request, responses ...Response) {
+func (reg *Registry) AddRequestWithResponses(request Request, responses ...mockResponse) {
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responses))
 }
 
@@ -284,15 +313,7 @@ func (reg *Registry) GetServer() *httptest.Server {
 			}
 
 			possibleMatch.RecordMatch(r)
-
-			for k, v := range response.Headers {
-				w.Header().Add(k, v)
-			}
-			w.WriteHeader(response.StatusCode)
-			_, err = w.Write(response.Body)
-			if err != nil {
-				panic("cannot write body of request")
-			}
+			response.createResponse(w, r)
 			return
 		}
 

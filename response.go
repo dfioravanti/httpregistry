@@ -2,6 +2,7 @@ package httpregistry
 
 import (
 	"encoding/json"
+	"net/http"
 )
 
 // The list of all status codes is available at
@@ -88,8 +89,21 @@ type Response struct {
 	Headers    map[string]string `json:"headers,omitempty"`
 }
 
-func (r Response) String() string {
-	bytes, err := json.Marshal(r)
+// createResponse emits the response encoded in Response to w
+func (res Response) createResponse(w http.ResponseWriter, _ *http.Request) {
+	for k, v := range res.Headers {
+		w.Header().Add(k, v)
+	}
+	w.WriteHeader(res.StatusCode)
+	_, err := w.Write(res.Body)
+	if err != nil {
+		panic("cannot write body of request")
+	}
+}
+
+// String marshal Response to string
+func (res Response) String() string {
+	bytes, err := json.Marshal(res)
 	if err != nil {
 		panic("cannot marshal request")
 	}
@@ -97,49 +111,46 @@ func (r Response) String() string {
 }
 
 // WithStatus returns a new response with the StatusCode attribute set to statusCode
-func (r Response) WithStatus(statusCode int) Response {
-	r.StatusCode = statusCode
-	return r
+func (res Response) WithStatus(statusCode int) Response {
+	res.StatusCode = statusCode
+	return res
 }
 
 // WithHeader returns a new response with the header header set to value
-func (r Response) WithHeader(header string, value string) Response {
-	r.Headers[header] = value
-	return r
+func (res Response) WithHeader(header string, value string) Response {
+	res.Headers[header] = value
+	return res
 }
 
 // WithJSONHeader returns a new Response with the header `Content-Type` set to `application/json`
-func (r Response) WithJSONHeader() Response {
-	r.Headers["Content-Type"] = "application/json"
-	return r
+func (res Response) WithJSONHeader() Response {
+	res.Headers["Content-Type"] = "application/json"
+	return res
 }
 
 // WithHeaders returns a new response with all the headers in headers applied.
 // If multiple headers with the same name are defined only the last one is applied.
-func (r Response) WithHeaders(headers map[string]string) Response {
+func (res Response) WithHeaders(headers map[string]string) Response {
 	for k, v := range headers {
-		r.Headers[k] = v
+		res.Headers[k] = v
 	}
-	return r
+	return res
 }
 
 // WithBody returns a new request with the method body set to body
-func (r Response) WithBody(body []byte) Response {
-	r.Body = body
-	return r
+func (res Response) WithBody(body []byte) Response {
+	res.Body = body
+	return res
 }
 
 // WithJSONBody returns a new response that will return body as body and will have
 // the header `Content-Type` set to `application/json`.
 // This method panics if body cannot be converted to JSON
-func (r Response) WithJSONBody(body any) Response {
-	r = r.WithJSONHeader()
-	r.Body = mustMarshalJSON(body)
-	return r
+func (res Response) WithJSONBody(body any) Response {
+	res = res.WithJSONHeader()
+	res.Body = mustMarshalJSON(body)
+	return res
 }
-
-// Responses represents a slices of responses
-type Responses = []Response
 
 // NewResponse creates a new Response.
 // This function is designed to be used in conjunction with other other receivers.

@@ -31,5 +31,7 @@ With this library this can be done as
 		WithJSONHeader().
 		WithBody([]byte("{\"user\": \"John Schmidt\"}"))
 	ts := registry.GetServer()
+
+For more examples of what this package is capable of, refer to the README file.
 */
 package httpregistry
