@@ -77,3 +77,48 @@ func (m *consumableResponsesMatch) Matches() []*http.Request {
 func (m *consumableResponsesMatch) NumberOfCalls() int {
 	return len(m.matches)
 }
+
+// A infiniteResponsesMatch is a match that returns the same Response each time a predefined Request happens.
+// The response is never consumed, so NextResponse() never returns an errNoNextResponseFound
+type infiniteResponsesMatch struct {
+	request       Request
+	response      mockResponse
+	numberOfCalls int
+	matches       []*http.Request
+}
+
+// newInfiniteResponsesMatch creates a new infiniteResponsesMatch
+func newInfiniteResponsesMatch(request Request, response mockResponse) *infiniteResponsesMatch {
+	return &infiniteResponsesMatch{
+		request:       request,
+		response:      response,
+		numberOfCalls: 0,
+		matches:       make([]*http.Request, 0),
+	}
+}
+
+// Request returns the request that triggers the match
+func (m *infiniteResponsesMatch) Request() Request {
+	return m.request
+}
+
+// RecordMatch records that a request was a successful match for this match
+func (m *infiniteResponsesMatch) RecordMatch(req *http.Request) {
+	m.matches = append(m.matches, cloneHTTPRequest(req))
+}
+
+// Next response returns the next response associated with the match.
+// As this is an infinite match this function never returns an error
+func (m *infiniteResponsesMatch) NextResponse() (mockResponse, error) {
+	return m.response, nil
+}
+
+// Matches returns the list of http.Request that matched with this Match
+func (m *infiniteResponsesMatch) Matches() []*http.Request {
+	return m.matches
+}
+
+// NumberOfCalls returns the number of times the match was fulfilled
+func (m *infiniteResponsesMatch) NumberOfCalls() int {
+	return len(m.matches)
+}

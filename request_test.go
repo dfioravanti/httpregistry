@@ -33,3 +33,10 @@ func (s *TestSuite) TestEqualityWorks() {
 		})
 	}
 }
+
+func (s *TestSuite) TestModifyingDefaultRequestDoesNotChangeOriginal() {
+	r := httpregistry.DefaultRequest
+	r = r.WithMethod(http.MethodPost)
+
+	s.False(httpregistry.DefaultRequest.Equal(r))
+}
