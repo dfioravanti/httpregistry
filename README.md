@@ -62,6 +62,76 @@ Once a request is matched the corresponding `Response` is used to determine what
 * Body
 * Headers
 
+### Retrieving matching requests
+
+Sometimes it is useful to retrieve the `http.Request` that matched a `HttpRegistry.Request`. For example to check if the body if a POST/PUT request is what we expect or similar. One can do that via three functions
+
+- `registry.GetMatchesForRequest(request)`
+- `registry.GetMatchesForURL(url)`
+- `registry.GetMatchesURLAndMethod(url, method)`
+
+### Infinite responses
+
+A `Response` is consumed when a match happen, this is by design so that it is possible to test that the expected number of calls happens, but sometimes one does not really care about how many calls are made and just wants to mock a http call away. This is possible via `httpregistry.AddInfiniteResponse(response)`
+
+```go
+import (
+	"net/http"
+	"testing"
+
+	"github.com/dfioravanti/httpregistry"
+)
+
+func TestAddInfiniteResponse(t *testing.T) {
+	nbCalls := 100
+
+	// 1. Create the registry and defer the check that all responses
+	//    that we will create are used.
+	//    t is used to fail the test if the deferred check fails.
+	registry := httpregistry.NewRegistry(t)
+
+	// 2. Add an AddInfiniteResponse,
+	// 	  by default Response are consumed when they match but
+	//    InfiniteResponse are not so they can be matched forever
+	registry.AddInfiniteResponse(
+		httpregistry.NewResponse(),
+	)
+
+	// 3. Create the server
+	server := registry.GetServer()
+	defer server.Close()
+	client := http.Client{}
+
+	// 4. Make calls and check assertions
+	var urls []string
+	for range nbCalls {
+		url := generateRandomString(10)
+
+		res, err := client.Get(server.URL + "/" + url)
+		if err != nil {
+			t.Errorf("executing request failed: %v", err)
+		}
+
+		if res.StatusCode != 200 {
+			t.Errorf("unexpected status code %v", res.StatusCode)
+		}
+
+		urls = append(urls, url)
+	}
+
+	requests := registry.GetMatchesForRequest(httpregistry.DefaultRequest)
+	if len(requests) != nbCalls {
+		t.Errorf("the number of requests (%d) does not match the number of calls (%d)", len(requests), nbCalls)
+	}
+
+	for i, r := range requests {
+		if r.URL.Path != "/"+urls[i] {
+			t.Errorf("the request path (%s) does not match the expected path (%s)", r.URL.Path, "/"+urls[i])
+		}
+	}
+}
+```
+
 ### Custom responses
 
 Sometimes the standard `Response` from the package is not enough, suppose that you want to return a different value depending on the request, so for example you want to match an ID in the path or something similar. This is not possible with a `Response` since it does not allow to interact with the `http.Request` that is coming in. To solve this problem this package provides a `CustomResponse` type that allows you to interact with both the `http.Request` and the `http.ResponseWriter`.

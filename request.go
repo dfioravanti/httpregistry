@@ -6,6 +6,10 @@ import (
 	"regexp"
 )
 
+// DefaultRequest represents the request that is used when no request is specified.
+// This is useful in combination with registry.GetMatchesForRequest so that it is possible to retrieve all the matches associated with it
+var DefaultRequest = NewRequest()
+
 // Request represents a request that will be registered to a Registry to get matched against an incoming HTTP request.
 // The match happens against the method, the headers and the URL interpreted as a regex
 type Request struct {

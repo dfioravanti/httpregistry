@@ -116,3 +116,51 @@ func TestCustomRequestWorks(t *testing.T) {
 		t.Errorf("body does not match expected body")
 	}
 }
+
+func TestAddInfiniteResponseWorksAsExpected(t *testing.T) {
+	nbCalls := 100
+
+	// 1. Create the registry and defer the check that all responses
+	//    that we will create are used.
+	//    t is used to fail the test if the deferred check fails.
+	registry := httpregistry.NewRegistry(t)
+
+	// 2. Add an AddInfiniteResponse, by default Response are consumed when they match but
+	// 	  InfiniteResponse are not so they can be matched forever
+	registry.AddInfiniteResponse(
+		httpregistry.NewResponse(),
+	)
+
+	// 3. Create the server
+	server := registry.GetServer()
+	defer server.Close()
+	client := http.Client{}
+
+	// 4. Make calls and check assertions
+	var urls []string
+	for range nbCalls {
+		url := generateRandomString(10)
+
+		res, err := client.Get(server.URL + "/" + url)
+		if err != nil {
+			t.Errorf("executing request failed: %v", err)
+		}
+
+		if res.StatusCode != 200 {
+			t.Errorf("unexpected status code %v", res.StatusCode)
+		}
+
+		urls = append(urls, url)
+	}
+
+	requests := registry.GetMatchesForRequest(httpregistry.DefaultRequest)
+	if len(requests) != nbCalls {
+		t.Errorf("the number of requests (%d) does not match the number of calls (%d)", len(requests), nbCalls)
+	}
+
+	for i, r := range requests {
+		if r.URL.Path != "/"+urls[i] {
+			t.Errorf("the request path (%s) does not match the expected path (%s)", r.URL.Path, "/"+urls[i])
+		}
+	}
+}

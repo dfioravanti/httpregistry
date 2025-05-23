@@ -200,6 +200,34 @@ func (reg *Registry) AddRequestWithResponses(request Request, responses ...mockR
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responses))
 }
 
+// AddInfiniteResponse adds to the registry a generic response that is returned for any call and it is never consumed
+//
+//	reg := httpregistry.NewRegistry(t)
+//	reg.AddInfiniteResponse(
+//		httpregistry.NewResponse(http.StatusCreated, []byte{"hello"}),
+//	)
+//	reg.GetServer()
+//
+// will create a http server that returns 204 with "hello" as body on calling the server on any URL for as many times as needed
+func (reg *Registry) AddInfiniteResponse(response mockResponse) {
+	request := NewRequest()
+	reg.matches = append(reg.matches, newInfiniteResponsesMatch(request, response))
+}
+
+// AddRequestWithInfiniteResponse adds to the registry a generic response for a generic request that needs to be matched
+//
+//	reg := httpregistry.NewRegistry(t)
+//	reg.AddRequestWithInfiniteResponse(
+//		httpregistry.NewRequest(GET, "/foo", httpregistry.WithRequestHeader("header", "value")),
+//		httpregistry.NewResponse(http.StatusCreated, []byte{"hello"}),
+//	)
+//	reg.GetServer()
+//
+// will create a http server that returns 204 with "hello" as body on calling GET "/foo" with the correct header and fails the test on anything else
+func (reg *Registry) AddRequestWithInfiniteResponse(request Request, response mockResponse) {
+	reg.matches = append(reg.matches, newInfiniteResponsesMatch(request, response))
+}
+
 // GetMatchesForRequest returns the *http.Request that matched a generic Request
 func (reg *Registry) GetMatchesForRequest(r Request) []*http.Request {
 	for _, match := range reg.matches {
@@ -333,6 +361,8 @@ func (reg *Registry) GetServer() *httptest.Server {
 
 // CheckAllResponsesAreConsumed fails the test if there are unused responses at the end of the test.
 // This is useful to check if all the expected calls happened or if there is an unexpected behavior happening.
+//
+// **Important**: If you are using AddInfiniteRequest this call will ALWAYS fail!
 func (reg *Registry) CheckAllResponsesAreConsumed() {
 	for _, match := range reg.matches {
 		response, err := match.NextResponse()
