@@ -281,6 +281,15 @@ func (s *TestSuite) TestAccessTheRequestBodyWorks() {
 	s.NoError(err)
 
 	s.Equal(expectedBody, bodyBytes)
+
+	// we check that the body is not consumed but it can be accessed again
+	matchingRequests = registry.GetMatchesForRequest(mockRequest)
+	s.Equal(1, len(matchingRequests))
+
+	bodyBytes, err = io.ReadAll(matchingRequests[0].Body)
+	s.NoError(err)
+
+	s.Equal(expectedBody, bodyBytes)
 }
 
 func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
@@ -316,6 +325,15 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlWorks() {
 	s.NoError(err)
 
 	s.Equal(expectedBody, bodyBytes)
+
+	// we check that the body is not consumed but it can be accessed again
+	matchingRequests = registry.GetMatchesForURL(path)
+	s.Equal(1, len(matchingRequests))
+
+	bodyBytes, err = io.ReadAll(matchingRequests[0].Body)
+	s.NoError(err)
+
+	s.Equal(expectedBody, bodyBytes)
 }
 
 func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
@@ -348,6 +366,15 @@ func (s *TestSuite) TestAccessTheRequestBodyByUrlAndMethodWorks() {
 	s.Equal(1, len(matchingRequests))
 
 	bodyBytes, err := io.ReadAll(matchingRequests[0].Body)
+	s.NoError(err)
+
+	s.Equal(expectedBody, bodyBytes)
+
+	// we check that the body is not consumed but it can be accessed again
+	matchingRequests = registry.GetMatchesURLAndMethod(path, http.MethodPost)
+	s.Equal(1, len(matchingRequests))
+
+	bodyBytes, err = io.ReadAll(matchingRequests[0].Body)
 	s.NoError(err)
 
 	s.Equal(expectedBody, bodyBytes)

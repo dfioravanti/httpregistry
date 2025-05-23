@@ -232,7 +232,15 @@ func (reg *Registry) AddRequestWithInfiniteResponse(request Request, response mo
 func (reg *Registry) GetMatchesForRequest(r Request) []*http.Request {
 	for _, match := range reg.matches {
 		if match.Request().Equal(r) {
-			return match.Matches()
+			matches := match.Matches()
+
+			// we clone the requests so that if this function is called multiple times things
+			// like the request body can be accessed again
+			matchesToReturn := make([]*http.Request, 0, len(matches))
+			for _, m := range matches {
+				matchesToReturn = append(matchesToReturn, cloneHTTPRequest(m))
+			}
+			return matchesToReturn
 		}
 	}
 	return []*http.Request{}
@@ -243,7 +251,15 @@ func (reg *Registry) GetMatchesForURL(url string) []*http.Request {
 	for _, match := range reg.matches {
 		r := match.Request()
 		if r.urlAsRegex.MatchString(url) {
-			return match.Matches()
+			matches := match.Matches()
+
+			// we clone the requests so that if this function is called multiple times things
+			// like the request body can be accessed again
+			matchesToReturn := make([]*http.Request, 0, len(matches))
+			for _, m := range matches {
+				matchesToReturn = append(matchesToReturn, cloneHTTPRequest(m))
+			}
+			return matchesToReturn
 		}
 	}
 	return []*http.Request{}
@@ -254,7 +270,15 @@ func (reg *Registry) GetMatchesURLAndMethod(url string, method string) []*http.R
 	for _, match := range reg.matches {
 		r := match.Request()
 		if r.urlAsRegex.MatchString(url) && r.Method == method {
-			return match.Matches()
+			matches := match.Matches()
+
+			// we clone the requests so that if this function is called multiple times things
+			// like the request body can be accessed again
+			matchesToReturn := make([]*http.Request, 0, len(matches))
+			for _, m := range matches {
+				matchesToReturn = append(matchesToReturn, cloneHTTPRequest(m))
+			}
+			return matchesToReturn
 		}
 	}
 	return []*http.Request{}
