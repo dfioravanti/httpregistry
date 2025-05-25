@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/dfioravanti/httpregistry"
@@ -162,5 +163,90 @@ func TestAddInfiniteResponseWorksAsExpected(t *testing.T) {
 		if r.URL.Path != "/"+urls[i] {
 			t.Errorf("the request path (%s) does not match the expected path (%s)", r.URL.Path, "/"+urls[i])
 		}
+	}
+}
+
+func TestHowToInvestigateFailingTest(t *testing.T) {
+	// 1. Setup a mock for testing.T that we control and can access later
+	mockT := httpregistry.NewMockTestingT()
+
+	// 2. Setup registry and the requests
+	registry := httpregistry.NewRegistry(mockT)
+	registry.AddMethodAndURL(http.MethodGet, "/foo")
+	registry.AddMethodAndURL(http.MethodDelete, "/bar")
+	registry.AddRequestWithResponse(
+		httpregistry.DefaultRequest,
+		httpregistry.NewResponse().WithName("My beautiful response"),
+	)
+	registry.AddRequestWithResponse(
+		httpregistry.DefaultRequest,
+		httpregistry.NewCustomResponse(func(_ http.ResponseWriter, _ *http.Request) {}).WithName("My beautiful custom response"),
+	)
+
+	// 3. No call happens but we assert that all calls were consumed
+	registry.CheckAllResponsesAreConsumed()
+
+	// 4. Let us check that mockT contains useful information
+	if len(mockT.Messages) != 4 {
+		t.Errorf("There should be 4 uncalled request but I found only %d", len(mockT.Messages))
+	}
+
+	if !slices.Contains(mockT.Messages, "request mock request #1 has httpregistry.OkResponse as unused response") {
+		t.Error("request mock request #1 has httpregistry.OkResponse as unused response should be in the slice but it is not")
+	}
+	if !slices.Contains(mockT.Messages, "request mock request #2 has httpregistry.OkResponse as unused response") {
+		t.Error("request mock request #2 has httpregistry.OkResponse as unused response should be in the slice but it is not")
+	}
+	if !slices.Contains(mockT.Messages, "request httpregistry.DefaultRequest has My beautiful response as unused response") {
+		t.Error("request httpregistry.DefaultRequest has My beautiful response as unused response should be in the slice but it is not")
+	}
+	if !slices.Contains(mockT.Messages, "request httpregistry.DefaultRequest has My beautiful custom response as unused response") {
+		t.Error("request httpregistry.DefaultRequest has My beautiful custom response as unused response should be in the slice but it is not")
+	}
+}
+
+func TestWeCanInvestigateWhyATestFails(t *testing.T) {
+	// 1. Setup a mock for testing.T that we control and can access later
+	mockT := httpregistry.NewMockTestingT()
+
+	// 2. Setup registry and the requests
+	registry := httpregistry.NewRegistry(mockT)
+	registry.AddMethodAndURL(http.MethodGet, "/foo")
+
+	// 3. Call Twice a route with only one response
+	url := registry.GetServer().URL
+	client := http.Client{}
+
+	// 3a. First call works
+	firstResponse, err := client.Get(url + "/foo")
+	if err != nil {
+		t.Errorf("Unexpected error in first request: %s", err)
+	}
+	if firstResponse.StatusCode != 200 {
+		t.Errorf("Unexpected status code for first response, I was expecting 200 we got %d", firstResponse.StatusCode)
+	}
+
+	// 3b. Second call fails
+	secondResponse, err := client.Get(url + "/foo")
+	if err != nil {
+		t.Errorf("Unexpected error in second request: %s", err)
+	}
+	if secondResponse.StatusCode != 500 {
+		t.Errorf("Unexpected status code for second response, I was expecting 500 we got %d", secondResponse.StatusCode)
+	}
+
+	// 4. The test was failed
+	if mockT.HasFailed != true {
+		t.Errorf("mockT.HasFailed should be true, but it was %t", mockT.HasFailed)
+	}
+
+	// 5. The body of the call tells us why it failed
+	bodyBytes, err := io.ReadAll(secondResponse.Body)
+	if err != nil {
+		t.Errorf("Decoding second response body failed: %s", err)
+	}
+	body := string(bodyBytes)
+	if body != "mock request #1 missed because the route matches but there was no response available" {
+		t.Errorf("was expecting \"mock request #1 missed because the route matches but there was no response available\", got: %s", body)
 	}
 }

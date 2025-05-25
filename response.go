@@ -1,7 +1,6 @@
 package httpregistry
 
 import (
-	"encoding/json"
 	"net/http"
 )
 
@@ -10,121 +9,126 @@ import (
 
 // Information responses
 var (
-	ContinueResponse           = NewResponse().WithStatus(100)
-	SwitchingProtocolsResponse = NewResponse().WithStatus(101)
-	ProcessingResponse         = NewResponse().WithStatus(102)
-	EarlyHintsResponse         = NewResponse().WithStatus(103)
+	ContinueResponse           = newResponseWithName("httpregistry.ContinueResponse").WithStatus(100)
+	SwitchingProtocolsResponse = newResponseWithName("httpregistry.SwitchingProtocolsResponse").WithStatus(101)
+	ProcessingResponse         = newResponseWithName("httpregistry.ProcessingResponse").WithStatus(102)
+	EarlyHintsResponse         = newResponseWithName("httpregistry.EarlyHintsResponse").WithStatus(103)
 )
 
 // Successful responses
 var (
-	OkResponse                          = NewResponse().WithStatus(200)
-	CreatedResponse                     = NewResponse().WithStatus(201)
-	AcceptedResponse                    = NewResponse().WithStatus(202)
-	NonAuthoritativeInformationResponse = NewResponse().WithStatus(203)
-	NoContentResponse                   = NewResponse().WithStatus(204)
-	ResetContentResponse                = NewResponse().WithStatus(205)
-	PartialContentResponse              = NewResponse().WithStatus(206)
-	MultiStatusResponse                 = NewResponse().WithStatus(207)
-	AlreadyReportedResponse             = NewResponse().WithStatus(208)
+	OkResponse                          = newResponseWithName("httpregistry.OkResponse").WithStatus(200)
+	CreatedResponse                     = newResponseWithName("httpregistry.CreatedResponse").WithStatus(201)
+	AcceptedResponse                    = newResponseWithName("httpregistry.AcceptedResponse").WithStatus(202)
+	NonAuthoritativeInformationResponse = newResponseWithName("httpregistry.NonAuthoritativeInformationResponse").WithStatus(203)
+	NoContentResponse                   = newResponseWithName("httpregistry.NoContentResponse").WithStatus(204)
+	ResetContentResponse                = newResponseWithName("httpregistry.ResetContentResponse").WithStatus(205)
+	PartialContentResponse              = newResponseWithName("httpregistry.PartialContentResponse").WithStatus(206)
+	MultiStatusResponse                 = newResponseWithName("httpregistry.MultiStatusResponse").WithStatus(207)
+	AlreadyReportedResponse             = newResponseWithName("httpregistry.AlreadyReportedResponse").WithStatus(208)
 )
 
 // Redirection messages
 var (
-	MultipleChoicesResponse   = NewResponse().WithStatus(300)
-	MovedPermanentlyResponse  = NewResponse().WithStatus(301)
-	FoundResponse             = NewResponse().WithStatus(302)
-	SeeOtherResponse          = NewResponse().WithStatus(303)
-	NotModifiedResponse       = NewResponse().WithStatus(304)
-	TemporaryRedirectResponse = NewResponse().WithStatus(307)
-	PermanentRedirectResponse = NewResponse().WithStatus(308)
+	MultipleChoicesResponse   = newResponseWithName("httpregistry.MultipleChoicesResponse").WithStatus(300)
+	MovedPermanentlyResponse  = newResponseWithName("httpregistry.MovedPermanentlyResponse").WithStatus(301)
+	FoundResponse             = newResponseWithName("httpregistry.FoundResponse").WithStatus(302)
+	SeeOtherResponse          = newResponseWithName("httpregistry.SeeOtherResponse").WithStatus(303)
+	NotModifiedResponse       = newResponseWithName("httpregistry.NotModifiedResponse").WithStatus(304)
+	TemporaryRedirectResponse = newResponseWithName("httpregistry.TemporaryRedirectResponse").WithStatus(307)
+	PermanentRedirectResponse = newResponseWithName("httpregistry.PermanentRedirectResponse").WithStatus(308)
 )
 
 // Client error responses
 var (
-	BadRequestsResponse                 = NewResponse().WithStatus(400)
-	UnauthorizedResponse                = NewResponse().WithStatus(401)
-	PaymentRequiredResponse             = NewResponse().WithStatus(402)
-	ForbiddenResponse                   = NewResponse().WithStatus(403)
-	NotFoundResponse                    = NewResponse().WithStatus(404)
-	MethodNotAllowedResponse            = NewResponse().WithStatus(405)
-	NotAcceptableResponse               = NewResponse().WithStatus(406)
-	ProxyAuthenticationRequiredResponse = NewResponse().WithStatus(407)
-	RequestTimeoutResponse              = NewResponse().WithStatus(408)
-	ConflictResponse                    = NewResponse().WithStatus(409)
-	GoneResponse                        = NewResponse().WithStatus(410)
-	LengthRequiredResponse              = NewResponse().WithStatus(411)
-	PreconditionFailedResponse          = NewResponse().WithStatus(412)
-	PayloadTooLargeResponse             = NewResponse().WithStatus(413)
-	URITooLongResponse                  = NewResponse().WithStatus(414)
-	UnsupportedMediaTypeResponse        = NewResponse().WithStatus(415)
-	RangeNotSatisfiableResponse         = NewResponse().WithStatus(416)
-	ExpectationFailedResponse           = NewResponse().WithStatus(417)
-	IAmATeapotResponse                  = NewResponse().WithStatus(418)
-	MisdirectedRequestResponse          = NewResponse().WithStatus(421)
-	UpgradeRequiredResponse             = NewResponse().WithStatus(426)
-	ReconditionRequiredResponse         = NewResponse().WithStatus(428)
-	RequestHeaderFieldsTooLargeResponse = NewResponse().WithStatus(431)
-	UnavailableForLegalReasonsResponse  = NewResponse().WithStatus(451)
+	BadRequestsResponse                 = newResponseWithName("httpregistry.BadRequestsResponse").WithStatus(400)
+	UnauthorizedResponse                = newResponseWithName("httpregistry.UnauthorizedResponse").WithStatus(401)
+	PaymentRequiredResponse             = newResponseWithName("httpregistry.PaymentRequiredResponse").WithStatus(402)
+	ForbiddenResponse                   = newResponseWithName("httpregistry.ForbiddenResponse").WithStatus(403)
+	NotFoundResponse                    = newResponseWithName("httpregistry.NotFoundResponse").WithStatus(404)
+	MethodNotAllowedResponse            = newResponseWithName("httpregistry.MethodNotAllowedResponse").WithStatus(405)
+	NotAcceptableResponse               = newResponseWithName("httpregistry.NotAcceptableResponse").WithStatus(406)
+	ProxyAuthenticationRequiredResponse = newResponseWithName("httpregistry.ProxyAuthenticationRequiredResponse").WithStatus(407)
+	RequestTimeoutResponse              = newResponseWithName("httpregistry.RequestTimeoutResponse").WithStatus(408)
+	ConflictResponse                    = newResponseWithName("httpregistry.ConflictResponse").WithStatus(409)
+	GoneResponse                        = newResponseWithName("httpregistry.GoneResponse").WithStatus(410)
+	LengthRequiredResponse              = newResponseWithName("httpregistry.LengthRequiredResponse").WithStatus(411)
+	PreconditionFailedResponse          = newResponseWithName("httpregistry.PreconditionFailedResponse").WithStatus(412)
+	PayloadTooLargeResponse             = newResponseWithName("httpregistry.PayloadTooLargeResponse").WithStatus(413)
+	URITooLongResponse                  = newResponseWithName("httpregistry.URITooLongResponse").WithStatus(414)
+	UnsupportedMediaTypeResponse        = newResponseWithName("httpregistry.UnsupportedMediaTypeResponse").WithStatus(415)
+	RangeNotSatisfiableResponse         = newResponseWithName("httpregistry.RangeNotSatisfiableResponse").WithStatus(416)
+	ExpectationFailedResponse           = newResponseWithName("httpregistry.ExpectationFailedResponse").WithStatus(417)
+	IAmATeapotResponse                  = newResponseWithName("httpregistry.IAmATeapotResponse").WithStatus(418)
+	MisdirectedRequestResponse          = newResponseWithName("httpregistry.MisdirectedRequestResponse").WithStatus(421)
+	UpgradeRequiredResponse             = newResponseWithName("httpregistry.UpgradeRequiredResponse").WithStatus(426)
+	ReconditionRequiredResponse         = newResponseWithName("httpregistry.ReconditionRequiredResponse").WithStatus(428)
+	RequestHeaderFieldsTooLargeResponse = newResponseWithName("httpregistry.RequestHeaderFieldsTooLargeResponse").WithStatus(431)
+	UnavailableForLegalReasonsResponse  = newResponseWithName("httpregistry.UnavailableForLegalReasonsResponse").WithStatus(451)
 )
 
 // Server error responses
 var (
-	InternalServerErrorResponse     = NewResponse().WithStatus(500)
-	NotImplementedResponse          = NewResponse().WithStatus(501)
-	BadGatewayResponse              = NewResponse().WithStatus(502)
-	ServiceUnavailableResponse      = NewResponse().WithStatus(503)
-	GatewayTimeoutResponse          = NewResponse().WithStatus(504)
-	HTTPVersionNotSupportedResponse = NewResponse().WithStatus(505)
-	VariantAlsoNegotiatesResponse   = NewResponse().WithStatus(506)
-	NotExtendedResponse             = NewResponse().WithStatus(510)
-	NetworkAuthenticationResponse   = NewResponse().WithStatus(511)
+	InternalServerErrorResponse     = newResponseWithName("httpregistry.InternalServerErrorResponse").WithStatus(500)
+	NotImplementedResponse          = newResponseWithName("httpregistry.NotImplementedResponse").WithStatus(501)
+	BadGatewayResponse              = newResponseWithName("httpregistry.BadGatewayResponse").WithStatus(502)
+	ServiceUnavailableResponse      = newResponseWithName("httpregistry.ServiceUnavailableResponse").WithStatus(503)
+	GatewayTimeoutResponse          = newResponseWithName("httpregistry.GatewayTimeoutResponse").WithStatus(504)
+	HTTPVersionNotSupportedResponse = newResponseWithName("httpregistry.HTTPVersionNotSupportedResponse").WithStatus(505)
+	VariantAlsoNegotiatesResponse   = newResponseWithName("httpregistry.VariantAlsoNegotiatesResponse").WithStatus(506)
+	NotExtendedResponse             = newResponseWithName("httpregistry.NotExtendedResponse").WithStatus(510)
+	NetworkAuthenticationResponse   = newResponseWithName("httpregistry.NetworkAuthenticationResponse").WithStatus(511)
 )
 
 // Response represents a response that we want to return if the registry finds a request that matches the incoming request.
 // If the match happens then we will return a http response that matches the attributes defined in this struct.
 type Response struct {
-	StatusCode int               `json:"status_code"`
-	Body       []byte            `json:"body,omitempty"`
-	Headers    map[string]string `json:"headers,omitempty"`
+	name       string
+	statusCode int
+	body       []byte
+	headers    map[string]string
 }
 
-// createResponse emits the response encoded in Response to w
-func (res Response) createResponse(w http.ResponseWriter, _ *http.Request) {
-	for k, v := range res.Headers {
+// serveResponse emits the response encoded in Response to w
+func (res Response) serveResponse(w http.ResponseWriter, _ *http.Request) {
+	for k, v := range res.headers {
 		w.Header().Add(k, v)
 	}
-	w.WriteHeader(res.StatusCode)
-	_, err := w.Write(res.Body)
+	w.WriteHeader(res.statusCode)
+	_, err := w.Write(res.body)
 	if err != nil {
 		panic("cannot write body of request")
 	}
 }
 
+// WithName allows to add a name to a Response so that it can be better identified when debugging.
+// By the default Response gets a sequential name that can be hard to identify if there are many of them.
+// So if clarity is needed we recommend to change the default name.
+func (res Response) WithName(name string) Response {
+	res.name = name
+	return res
+}
+
 // String marshal Response to string
 func (res Response) String() string {
-	bytes, err := json.Marshal(res)
-	if err != nil {
-		panic("cannot marshal request")
-	}
-	return string(bytes)
+	return res.name
 }
 
 // WithStatus returns a new response with the StatusCode attribute set to statusCode
 func (res Response) WithStatus(statusCode int) Response {
-	res.StatusCode = statusCode
+	res.statusCode = statusCode
 	return res
 }
 
 // WithHeader returns a new response with the header header set to value
 func (res Response) WithHeader(header string, value string) Response {
-	res.Headers[header] = value
+	res.headers[header] = value
 	return res
 }
 
 // WithJSONHeader returns a new Response with the header `Content-Type` set to `application/json`
 func (res Response) WithJSONHeader() Response {
-	res.Headers["Content-Type"] = "application/json"
+	res.headers["Content-Type"] = "application/json"
 	return res
 }
 
@@ -132,14 +136,14 @@ func (res Response) WithJSONHeader() Response {
 // If multiple headers with the same name are defined only the last one is applied.
 func (res Response) WithHeaders(headers map[string]string) Response {
 	for k, v := range headers {
-		res.Headers[k] = v
+		res.headers[k] = v
 	}
 	return res
 }
 
 // WithBody returns a new request with the method body set to body
 func (res Response) WithBody(body []byte) Response {
-	res.Body = body
+	res.body = body
 	return res
 }
 
@@ -148,7 +152,7 @@ func (res Response) WithBody(body []byte) Response {
 // This method panics if body cannot be converted to JSON
 func (res Response) WithJSONBody(body any) Response {
 	res = res.WithJSONHeader()
-	res.Body = mustMarshalJSON(body)
+	res.body = mustMarshalJSON(body)
 	return res
 }
 
@@ -163,10 +167,27 @@ func (res Response) WithJSONBody(body any) Response {
 //
 // The default response is a 200 without any body nor header
 func NewResponse() Response {
+	return newResponseWithName("")
+}
+
+// newResponseWithName creates a new Response with the name already set,
+// this has the advantage of not increasing the counter in the default naming schema.
+//
+// This function is designed to be used in conjunction with other other receivers.
+// For example
+//
+//	newResponseWithName("httpregistry.John response").
+//		WithStatus(http.StatusOK).
+//		WithJSONHeader().
+//		WithBody([]byte("{\"user\": \"John Schmidt\"}"))
+//
+// The default response is a 200 without any body nor header
+func newResponseWithName(name string) Response {
 	r := Response{
-		StatusCode: 200,
-		Body:       make([]byte, 0),
-		Headers:    make(map[string]string),
+		name:       name,
+		statusCode: 200,
+		body:       make([]byte, 0),
+		headers:    make(map[string]string),
 	}
 
 	return r

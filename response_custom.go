@@ -1,13 +1,8 @@
 package httpregistry
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 )
-
-// this is a bit of hacky thing to have a default name
-var counter = 0
 
 // CustomResponse allows the user to define a custom made response to any request.
 // In particular it allows to define responses that are functions of the request
@@ -26,28 +21,24 @@ var counter = 0
 //		}
 //	}
 type CustomResponse struct {
-	Name string `json:"name,omitempty"`
+	name string
 	f    func(w http.ResponseWriter, r *http.Request)
 }
 
-// String marshal FunctionalResponse to string
+// String marshal CustomResponse to string
 func (res CustomResponse) String() string {
-	bytes, err := json.Marshal(res)
-	if err != nil {
-		panic("cannot marshal request")
-	}
-	return string(bytes)
+	return res.name
 }
 
-// createResponse emits the response encoded in FunctionalResponse to w
-func (res CustomResponse) createResponse(w http.ResponseWriter, r *http.Request) {
+// serveResponse emits the response encoded in FunctionalResponse to w
+func (res CustomResponse) serveResponse(w http.ResponseWriter, r *http.Request) {
 	res.f(w, r)
 }
 
 // WithName allows to add a name to a FunctionalResponse so that it can be better identified when debugging.
 // By the fault FunctionalResponse gets a sequential name that can be hard to identify if there are many of them
 func (res CustomResponse) WithName(name string) CustomResponse {
-	res.Name = name
+	res.name = name
 	return res
 }
 
@@ -69,7 +60,8 @@ func (res CustomResponse) WithName(name string) CustomResponse {
 //		}
 //	}
 func NewCustomResponse(f func(w http.ResponseWriter, r *http.Request)) CustomResponse {
-	res := CustomResponse{Name: fmt.Sprintf("Custom response %d", counter), f: f}
-	counter++
-	return res
+	return CustomResponse{
+		name: "",
+		f:    f,
+	}
 }

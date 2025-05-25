@@ -43,7 +43,7 @@ func (s *TestSuite) TestFunctionalResponse() {
 			server := registry.GetServer()
 			defer server.Close()
 
-			request, err := http.NewRequest(tc.request.Method, server.URL+"/"+tc.request.URL, bytes.NewReader(tc.request.Body))
+			request, err := http.NewRequest(tc.request.method, server.URL+"/"+tc.request.url, bytes.NewReader(tc.request.body))
 			s.NoError(err)
 
 			res, err := client.Do(request)

@@ -36,3 +36,13 @@ func mustMarshalJSON(v any) []byte {
 	}
 	return b
 }
+
+// defaultName is used create default names for requests and responses
+func defaultName(baseString string) func() string {
+	counter := 1
+	return func() string {
+		stringToReturn := fmt.Sprintf("%s #%d", baseString, counter)
+		counter++
+		return stringToReturn
+	}
+}
