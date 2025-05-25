@@ -6,10 +6,10 @@ type whyMissed string
 
 // These constants are used to represents why a match does not work and they are returned to the user as part of the error message so that errors can be debugged easily
 const (
-	pathDoesNotMatch   = whyMissed("The path does not match")
-	methodDoesNotMatch = whyMissed("The method does not match")
-	headerDoesNotMatch = whyMissed("The header does not match")
-	outOfResponses     = whyMissed("The route matches but there was no response available")
+	pathDoesNotMatch   = whyMissed("the path does not match")
+	methodDoesNotMatch = whyMissed("the method does not match")
+	headerDoesNotMatch = whyMissed("the header does not match")
+	outOfResponses     = whyMissed("the route matches but there was no response available")
 )
 
 // miss represents that the registry was not able to match a registered request with the current request that is coming in from the outside.
@@ -37,5 +37,5 @@ func newMiss(match match, why whyMissed) miss {
 
 // String returns a human readable version of why the match could not happen
 func (m miss) String() string {
-	return fmt.Sprintf("%v missed %v", m.Request, m.Why)
+	return fmt.Sprintf("%v missed because %v", m.Request, m.Why)
 }

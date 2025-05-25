@@ -511,28 +511,39 @@ func (s *TestSuite) TestTestUsingAllRoutesWorks() {
 }
 
 func (s *TestSuite) TestUncalledRoutesTriggerAFailure() {
-	mockT := &httpregistry.MockTestingT{}
+	mockT := httpregistry.NewMockTestingT()
 
 	registry := httpregistry.NewRegistry(mockT)
 	registry.AddMethodAndURL(http.MethodGet, "/foo")
 	registry.AddMethodAndURL(http.MethodDelete, "/bar")
+	registry.AddRequestWithResponse(
+		httpregistry.DefaultRequest,
+		httpregistry.NewResponse().WithName("My beautiful response"),
+	)
+	registry.AddRequestWithResponse(
+		httpregistry.DefaultRequest,
+		httpregistry.NewCustomResponse(func(_ http.ResponseWriter, _ *http.Request) {}).WithName("My beautiful custom response"),
+	)
 
 	registry.CheckAllResponsesAreConsumed()
 
-	s.Equal(len(mockT.Messages), 2)
-	s.Contains(mockT.Messages, "request {\"url\":\"/foo\",\"method\":\"GET\"} has {\"status_code\":200} as unused response")
-	s.Contains(mockT.Messages, "request {\"url\":\"/bar\",\"method\":\"DELETE\"} has {\"status_code\":200} as unused response")
+	s.Equal(len(mockT.Messages), 4)
+	s.Contains(mockT.Messages, "request mock request #1 has httpregistry.OkResponse as unused response")
+	s.Contains(mockT.Messages, "request mock request #2 has httpregistry.OkResponse as unused response")
+	s.Contains(mockT.Messages, "request httpregistry.DefaultRequest has My beautiful response as unused response")
+	s.Contains(mockT.Messages, "request httpregistry.DefaultRequest has My beautiful custom response as unused response")
 }
 
 func (s *TestSuite) TestCallingTooMayTimesFails() {
-	mockT := &httpregistry.MockTestingT{}
+	mockT := httpregistry.NewMockTestingT()
 
 	registry := httpregistry.NewRegistry(mockT)
 	registry.AddMethodAndURL(http.MethodGet, "/foo")
 
 	url := registry.GetServer().URL
 	client := http.Client{}
-	_, _ = client.Get(url + "/foo")
+	_, err := client.Get(url + "/foo")
+	s.NoError(err)
 	response, err := client.Get(url + "/foo")
 	s.NoError(err)
 
@@ -541,7 +552,7 @@ func (s *TestSuite) TestCallingTooMayTimesFails() {
 	body := string(bodyBytes)
 
 	s.True(mockT.HasFailed)
-	s.Equal(body, "[{\"request\":{\"url\":\"/foo\",\"method\":\"GET\"},\"why\":\"The route matches but there was no response available\"}]")
+	s.Equal(body, "mock request #1 missed because the route matches but there was no response available")
 }
 
 func (s *TestSuite) TestMatchArbitraryRequests() {

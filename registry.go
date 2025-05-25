@@ -1,7 +1,6 @@
 package httpregistry
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,14 +14,22 @@ import (
 // It contains all the Match that were registered and after the server is called it contains all the reasons why a request did not match with a particular match
 // the testing.T is used to signal that there was an unexpected error or that not all the responses were consumed as expected
 type Registry struct {
-	t       TestingT
-	matches []match
-	misses  []miss
+	t                          TestingT
+	matches                    []match
+	misses                     []miss
+	nameRequestFunction        func() string
+	nameCustomResponseFunction func() string
+	nameResponseFunction       func() string
 }
 
 // NewRegistry creates a new empty Registry
 func NewRegistry(t TestingT) *Registry {
-	reg := Registry{t: t}
+	reg := Registry{
+		t:                          t,
+		nameRequestFunction:        defaultName("mock request"),
+		nameCustomResponseFunction: defaultName("custom mock response"),
+		nameResponseFunction:       defaultName("mock response"),
+	}
 	return &reg
 }
 
@@ -34,7 +41,7 @@ func NewRegistry(t TestingT) *Registry {
 //
 // will create a http server that returns 200 on calling anything.
 func (reg *Registry) Add() {
-	request := NewRequest()
+	request := NewRequest().WithName(reg.nameRequestFunction())
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
@@ -46,7 +53,7 @@ func (reg *Registry) Add() {
 //
 // will create a http server that returns 200 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddURL(URL string) {
-	request := NewRequest().WithURL(URL)
+	request := NewRequest().WithURL(URL).WithName(reg.nameRequestFunction())
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
@@ -58,8 +65,8 @@ func (reg *Registry) AddURL(URL string) {
 //
 // will create a http server that returns 401 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddURLWithStatusCode(URL string, statusCode int) {
-	request := NewRequest().WithURL(URL)
-	response := NewResponse().WithStatus(statusCode)
+	request := NewRequest().WithURL(URL).WithName(reg.nameRequestFunction())
+	response := NewResponse().WithStatus(statusCode).WithName(reg.nameResponseFunction())
 
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
@@ -72,7 +79,7 @@ func (reg *Registry) AddURLWithStatusCode(URL string, statusCode int) {
 //
 // will create a http server that returns 200 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddMethod(method string) {
-	request := NewRequest().WithMethod(method)
+	request := NewRequest().WithMethod(method).WithName(reg.nameRequestFunction())
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
@@ -84,8 +91,8 @@ func (reg *Registry) AddMethod(method string) {
 //
 // will create a http server that returns 401 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddMethodWithStatusCode(method string, statusCode int) {
-	request := NewRequest().WithMethod(method)
-	response := NewResponse().WithStatus(statusCode)
+	request := NewRequest().WithMethod(method).WithName(reg.nameRequestFunction())
+	response := NewResponse().WithStatus(statusCode).WithName(reg.nameResponseFunction())
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
 
@@ -97,7 +104,7 @@ func (reg *Registry) AddMethodWithStatusCode(method string, statusCode int) {
 //
 // will create a http server that returns 200 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddMethodAndURL(method string, URL string) {
-	request := NewRequest().WithMethod(method).WithURL(URL)
+	request := NewRequest().WithMethod(method).WithURL(URL).WithName(reg.nameRequestFunction())
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
@@ -109,8 +116,8 @@ func (reg *Registry) AddMethodAndURL(method string, URL string) {
 //
 // will create a http server that returns 204 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddMethodAndURLWithStatusCode(method string, URL string, statusCode int) {
-	request := NewRequest().WithMethod(method).WithURL(URL)
-	response := NewResponse().WithStatus(statusCode)
+	request := NewRequest().WithMethod(method).WithURL(URL).WithName(reg.nameRequestFunction())
+	response := NewResponse().WithStatus(statusCode).WithName(reg.nameResponseFunction())
 
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
@@ -123,7 +130,7 @@ func (reg *Registry) AddMethodAndURLWithStatusCode(method string, URL string, st
 //
 // will create a http server that returns 204 on calling GET "/foo" and fails the test on anything else
 func (reg *Registry) AddBody(body []byte) {
-	request := NewRequest().WithBody(body)
+	request := NewRequest().WithBody(body).WithName(reg.nameRequestFunction())
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
@@ -137,6 +144,7 @@ func (reg *Registry) AddBody(body []byte) {
 //
 // will create a http server that returns 200 on calling GET "/foo" with the correct header and fails the test on anything else
 func (reg *Registry) AddRequest(request Request) {
+	request = reg.ifNeededSetDefaultNameToRequest(request)
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{OkResponse}))
 }
 
@@ -150,7 +158,8 @@ func (reg *Registry) AddRequest(request Request) {
 //
 // will create a http server that returns 204 with "hello" as body on calling the server on any URL
 func (reg *Registry) AddResponse(response mockResponse) {
-	request := NewRequest()
+	request := NewRequest().WithName(reg.nameRequestFunction())
+	response = reg.ifNeededSetDefaultNameToMockResponse(response)
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
 
@@ -165,8 +174,12 @@ func (reg *Registry) AddResponse(response mockResponse) {
 //
 // will create a http server that returns 204 with "hello" as body on calling the server on any URL for two times and then returns an error
 func (reg *Registry) AddResponses(responses ...mockResponse) {
-	request := NewRequest()
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responses))
+	request := NewRequest().WithName(reg.nameRequestFunction())
+	responsesWithNames := make(mockResponses, 0, len(responses))
+	for _, response := range responses {
+		responsesWithNames = append(responsesWithNames, reg.ifNeededSetDefaultNameToMockResponse(response))
+	}
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responsesWithNames))
 }
 
 // AddRequestWithResponse adds to the registry a generic response for a generic request that needs to be matched
@@ -180,6 +193,8 @@ func (reg *Registry) AddResponses(responses ...mockResponse) {
 //
 // will create a http server that returns 204 with "hello" as body on calling GET "/foo" with the correct header and fails the test on anything else
 func (reg *Registry) AddRequestWithResponse(request Request, response mockResponse) {
+	request = reg.ifNeededSetDefaultNameToRequest(request)
+	response = reg.ifNeededSetDefaultNameToMockResponse(response)
 	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, mockResponses{response}))
 }
 
@@ -197,7 +212,12 @@ func (reg *Registry) AddRequestWithResponse(request Request, response mockRespon
 // will create a http server that returns 204 with "hello" as body on calling GET "/foo" the first call with the correct header,
 // it returns 200 with "hello again" as body on the second call with the correct header and fails the test on anything else
 func (reg *Registry) AddRequestWithResponses(request Request, responses ...mockResponse) {
-	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responses))
+	request = reg.ifNeededSetDefaultNameToRequest(request)
+	responsesWithNames := make(mockResponses, 0, len(responses))
+	for _, response := range responses {
+		responsesWithNames = append(responsesWithNames, reg.ifNeededSetDefaultNameToMockResponse(response))
+	}
+	reg.matches = append(reg.matches, newConsumableResponsesMatch(request, responsesWithNames))
 }
 
 // AddInfiniteResponse adds to the registry a generic response that is returned for any call and it is never consumed
@@ -210,7 +230,8 @@ func (reg *Registry) AddRequestWithResponses(request Request, responses ...mockR
 //
 // will create a http server that returns 204 with "hello" as body on calling the server on any URL for as many times as needed
 func (reg *Registry) AddInfiniteResponse(response mockResponse) {
-	request := NewRequest()
+	request := NewRequest().WithName(reg.nameRequestFunction())
+	response = reg.ifNeededSetDefaultNameToMockResponse(response)
 	reg.matches = append(reg.matches, newInfiniteResponsesMatch(request, response))
 }
 
@@ -225,6 +246,8 @@ func (reg *Registry) AddInfiniteResponse(response mockResponse) {
 //
 // will create a http server that returns 204 with "hello" as body on calling GET "/foo" with the correct header and fails the test on anything else
 func (reg *Registry) AddRequestWithInfiniteResponse(request Request, response mockResponse) {
+	request = reg.ifNeededSetDefaultNameToRequest(request)
+	response = reg.ifNeededSetDefaultNameToMockResponse(response)
 	reg.matches = append(reg.matches, newInfiniteResponsesMatch(request, response))
 }
 
@@ -269,7 +292,7 @@ func (reg *Registry) GetMatchesForURL(url string) []*http.Request {
 func (reg *Registry) GetMatchesURLAndMethod(url string, method string) []*http.Request {
 	for _, match := range reg.matches {
 		r := match.Request()
-		if r.urlAsRegex.MatchString(url) && r.Method == method {
+		if r.urlAsRegex.MatchString(url) && r.method == method {
 			matches := match.Matches()
 
 			// we clone the requests so that if this function is called multiple times things
@@ -292,11 +315,11 @@ func doesRegisteredMatchMatchIncomingRequest(registeredMatch match, r *http.Requ
 		return true, nil
 	}
 
-	expectedURL := registeredMatch.Request().URL
+	expectedURL := registeredMatch.Request().url
 	expectedURLAsRegex := registeredMatch.Request().urlAsRegex
-	expectedMethod := registeredMatch.Request().Method
-	expectedHeaders := registeredMatch.Request().Headers
-	expectedBody := registeredMatch.Request().Body
+	expectedMethod := registeredMatch.Request().method
+	expectedHeaders := registeredMatch.Request().headers
+	expectedBody := registeredMatch.Request().body
 
 	misses := []miss{}
 
@@ -365,7 +388,7 @@ func (reg *Registry) GetServer() *httptest.Server {
 			}
 
 			possibleMatch.RecordMatch(r)
-			response.createResponse(w, r)
+			response.serveResponse(w, r)
 			return
 		}
 
@@ -391,7 +414,7 @@ func (reg *Registry) CheckAllResponsesAreConsumed() {
 	for _, match := range reg.matches {
 		response, err := match.NextResponse()
 		if err == nil {
-			reg.t.Errorf("request %v has %v as unused response", match.Request(), response)
+			reg.t.Errorf("request %v has %v as unused response", match.Request().String(), response)
 		}
 	}
 }
@@ -400,9 +423,49 @@ func (reg *Registry) CheckAllResponsesAreConsumed() {
 // The envision use of this function is just as a helper when debugging the tests,
 // most of the time it might not be obvious if there is a typo or a small error.
 func (reg *Registry) Why() string {
-	output, err := json.Marshal(reg.misses)
-	if err != nil {
-		reg.t.Errorf("impossible to serialize matches to json: %v", err)
+	outputString := ""
+	for i, miss := range reg.misses {
+		if i == 0 {
+			outputString = miss.String()
+		} else {
+			outputString += "\n" + miss.String()
+		}
 	}
-	return string(output)
+	return outputString
+}
+
+// ifNeededSetDefaultNameToRequest overwrites the name field in a Request if the name is currently the empty string
+func (reg Registry) ifNeededSetDefaultNameToRequest(request Request) Request {
+	if request.name == "" {
+		request = request.WithName(reg.nameRequestFunction())
+	}
+	return request
+}
+
+// ifNeededSetDefaultNameToResponse overwrites the name field in a Response if the name is currently the empty string
+func (reg Registry) ifNeededSetDefaultNameToResponse(response Response) Response {
+	if response.name == "" {
+		response = response.WithName(reg.nameResponseFunction())
+	}
+	return response
+}
+
+// ifNeededSetDefaultNameToCustomRequest overwrites the name field in a CustomResponse if the name is currently the empty string
+func (reg Registry) ifNeededSetDefaultNameToCustomResponse(response CustomResponse) CustomResponse {
+	if response.name == "" {
+		response = response.WithName(reg.nameCustomResponseFunction())
+	}
+	return response
+}
+
+// ifNeededSetDefaultNameToMockResponse overwrites the name field in a mockResponse if the name is currently the empty string
+func (reg Registry) ifNeededSetDefaultNameToMockResponse(response mockResponse) mockResponse {
+	switch r := response.(type) {
+	case Response:
+		response = reg.ifNeededSetDefaultNameToResponse(r)
+	case CustomResponse:
+		response = reg.ifNeededSetDefaultNameToCustomResponse(r)
+	}
+
+	return response
 }

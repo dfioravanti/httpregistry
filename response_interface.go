@@ -8,8 +8,8 @@ import "net/http"
 //   - httpregistry.Response -> it allows to define (one or more) status code, body and headers
 //   - httpregistry.CustomResponse -> it allows to define the response as a function of (w, r)
 type mockResponse interface {
-	// createResponse emits the response encoded in the struct that implements mockResponse to w
-	createResponse(w http.ResponseWriter, r *http.Request)
+	// serveResponse emits the response encoded in the struct that implements mockResponse to w
+	serveResponse(w http.ResponseWriter, r *http.Request)
 	// String Marshals the mockResponse into string
 	String() string
 }
